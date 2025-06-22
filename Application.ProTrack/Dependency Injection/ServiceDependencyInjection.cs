@@ -1,12 +1,6 @@
 ﻿using Application.ProTrack.Service;
 using Domain.ProTrack.Interface;
-using Domain.ProTrack.Interface.RepoInterface;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Application.ProTrack.Dependency_Injection
 {
@@ -20,6 +14,7 @@ namespace Application.ProTrack.Dependency_Injection
             services.AddScoped<ICustomeEmailServiceInterface, CustomeEmailService>();
             services.AddScoped<IEmailServiceInterface, EmailSenderService>();
             services.AddScoped<IProjectServiceInterface, ProjectService>();
+            services.AddScoped<ITaskServiceInterface, TaskService>();
 
             return services;
         }

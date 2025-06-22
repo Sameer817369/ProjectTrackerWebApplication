@@ -12,5 +12,6 @@ namespace Domain.ProTrack.Interface.RepoInterface
         Task DeleteUserAsync(string userId);
         Task<AppUser?> GetUserByIdAsync(string userId);
         Task<List<string>> GetUserRoleAsync(AppUser user);
+        Task<string> GetCurrentUserId();
     }
 }

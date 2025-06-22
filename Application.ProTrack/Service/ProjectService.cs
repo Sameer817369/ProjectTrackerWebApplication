@@ -17,7 +17,7 @@ namespace Application.ProTrack.Service
             _projectRepo = projectRepo;
             _logger = logger;
         }
-        public async Task<IdentityResult> CreateProject(CreateProjectDto createProject)
+        public async Task<IdentityResult> CreateProject(UpdatesProjectDto createProject)
         {
             try
             {
@@ -29,7 +29,7 @@ namespace Application.ProTrack.Service
                     ProjectDescription = createProject.ProjectDescription,
                     StartDate = createProject.StartDate,
                     EndDate = createProject.EndDate,
-                    Status = ProjectStatus.Pending,
+                    Status = Status.Pending,
                 };
                 var projectUserModel = new List<ProjectUser>();
                 //adding manager

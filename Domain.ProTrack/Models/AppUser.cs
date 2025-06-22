@@ -17,6 +17,8 @@ namespace Domain.ProTrack.Models
         [Required]
         [Range(16, 60, ErrorMessage = "Age cannot be less then 16 or more than 60")]
         public int Age { get; set; }
+        public ICollection<ProjectUser> ProjectUsers { get; set; } = new List<ProjectUser>();
+        public ICollection<Project> ProjectsManaged { get; set; } = new List<Project>();
 
     }
 }

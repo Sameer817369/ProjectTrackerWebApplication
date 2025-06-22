@@ -1,12 +1,15 @@
 ﻿using Domain.ProTrack.DTO.ProjectDto;
 using Domain.ProTrack.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProTrack.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class ProjectController : ControllerBase
     {
         private readonly IProjectServiceInterface _projectService;
@@ -15,7 +18,7 @@ namespace ProTrack.Controllers
             _projectService = projectService;
         }
         [HttpPost]
-        public async Task<IActionResult> CreateProject([FromBody]CreateProjectDto createProject)
+        public async Task<IActionResult> CreateProject([FromBody]UpdatesProjectDto createProject)
         {
             try
             {

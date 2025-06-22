@@ -4,10 +4,10 @@ using static Domain.ProTrack.Enum.Enum;
 
 namespace Domain.ProTrack.Models
 {
-    public class Task
+    public class Tasks
     {
         [Key]
-        public Guid TaskId { get; set; }
+        public Guid TaskId { get; set; } = Guid.NewGuid();
         public Guid ProjectId { get; set; }
         [ForeignKey("ProjectId")]
         public Project Project { get; set; }
@@ -24,6 +24,7 @@ namespace Domain.ProTrack.Models
         public DateTime EndDate { get; set; }
         public DateTime? UpdatedDate { get; set; }
         [Required]
-        public ProjectStatus Status { get; set; }
+        public Status Status { get; set; }
+        public ICollection<ProjectUserTask> ProjectUserTasks { get; set; }
     }
 }

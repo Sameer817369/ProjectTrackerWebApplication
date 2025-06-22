@@ -39,7 +39,7 @@ namespace Application.ProTrack.Service
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Login failed for user with email: {Email}", loginUser?.Email ?? "Unknown");
-                throw new InvalidOperationException($"Unexpected Error! User Not Logged In {ex.Message}");
+                throw new InvalidOperationException($"Unexpected Error! User Not Logged In {ex}");
             }
         }
     }

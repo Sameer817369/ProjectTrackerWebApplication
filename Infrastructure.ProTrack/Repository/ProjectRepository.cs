@@ -31,6 +31,20 @@ namespace Infrastructure.ProTrack.Repository
                 throw new InvalidOperationException($"Unexpected Error! Failed to create project {ex.Message}");
             }
         }
+        public async Task<IdentityResult> UpdateProjectAsync(Project projectModel, List<ProjectUser> projectUsersModel)
+        {
+            try
+            {
+                _context.Projects.Update(projectModel);
+                _context.ProjectUsers.UpdateRange(projectUsersModel);
+                await _context.SaveChangesAsync();
+                return (IdentityResult.Success);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Unexpected Error! Failed to update project {ex.Message}");
+            }
+        }
         public async Task<string> FindManagerInfo(string managerUsername)
         {
             try

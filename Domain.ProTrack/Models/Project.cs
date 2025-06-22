@@ -9,6 +9,7 @@ namespace Domain.ProTrack.Models
     {
         [Key]
         public Guid ProjectId { get; set; } = Guid.NewGuid();
+        [Required]
         public string ManagerId { get; set; }
         [ForeignKey("ManagerId")]
         public AppUser AssignedManager { get; set; }
@@ -22,9 +23,10 @@ namespace Domain.ProTrack.Models
         [Required]
         public DateTime EndDate { get; set; }
         [Required]
-        public ProjectStatus Status { get; set; }
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public Status Status { get; set; }
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedDate { get; set;}
-        public ICollection<ProjectUser> projectUsers { get; set; }
+        public ICollection<ProjectUser> ProjectUsers { get; set; } = new List<ProjectUser>();
+        public ICollection<Tasks> Tasks { get; set; } = new List<Tasks>();
     }
 }

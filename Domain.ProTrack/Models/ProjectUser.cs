@@ -11,10 +11,12 @@ namespace Domain.ProTrack.Models
         public Guid ProjectId { get; set; }
         [ForeignKey("ProjectId")]
         public Project Project { get; set; }
+        [Required]
         public string? AssignedUserId { get; set; }
         [ForeignKey("AssignedUserId")]
         public AppUser AssignedUser { get; set; }
         [Required]
         public UserRole UserRole {  get; set; }
+        public ICollection<ProjectUserTask> ProjectUserTasks { get; set; } = new List<ProjectUserTask>();
     }
 }

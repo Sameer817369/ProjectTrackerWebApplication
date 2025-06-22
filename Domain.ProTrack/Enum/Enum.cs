@@ -15,7 +15,7 @@ namespace Domain.ProTrack.Enum
             Manager,
             Member
         }
-        public enum ProjectStatus
+        public enum Status
         {
             Pending,
             InProgress,

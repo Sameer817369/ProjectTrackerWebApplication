@@ -1,10 +1,12 @@
 ﻿using Domain.ProTrack.DTO;
 using Domain.ProTrack.Interface.RepoInterface;
 using Domain.ProTrack.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Security.Claims;
 using System.Text;
 
 namespace Infrastructure.ProTrack.Repository
@@ -12,14 +14,12 @@ namespace Infrastructure.ProTrack.Repository
     public class UserRepository : IUserRepoInterface
     {
         private readonly UserManager<AppUser> _userManager;
-        private readonly SignInManager<AppUser> _signInManager;
-        private readonly IConfiguration _config;
+        private readonly IHttpContextAccessor _contextAccessor;
 
-        public UserRepository(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager,IConfiguration config)
+        public UserRepository(UserManager<AppUser> userManager, IHttpContextAccessor contextAccessor)
         {
             _userManager = userManager;
-            _signInManager = signInManager;
-            _config = config;
+            _contextAccessor = contextAccessor;
         }
         public async Task<IdentityResult> CreateUserAsync(AppUser userModel, string password)
         {
@@ -83,6 +83,19 @@ namespace Infrastructure.ProTrack.Repository
             catch(Exception ex)
             {
                 throw new KeyNotFoundException($"Unexpected Error! Roles Not Found {ex.Message}");
+            }
+        }
+
+        public Task<string> GetCurrentUserId()
+        {
+            try
+            {
+                var userId = _contextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value ?? throw new UnauthorizedAccessException("User not found");
+                return Task.FromResult(userId);
+            }
+            catch(Exception ex)
+            {
+                throw new KeyNotFoundException($"Unexpected Error! User not found {ex.Message}");
             }
         }
     }

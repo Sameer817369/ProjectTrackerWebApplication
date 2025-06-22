@@ -11,5 +11,6 @@ namespace Domain.ProTrack.Interface
     public interface IProjectServiceInterface
     {
         public Task<IdentityResult> CreateProject(CreateProjectDto createProject);
+        public Task<IdentityResult> UpdateProject(UpdateProjectDto updateProjectDto, Guid ProjectId);
     }
 }

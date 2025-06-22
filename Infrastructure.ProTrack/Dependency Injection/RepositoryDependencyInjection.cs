@@ -16,6 +16,7 @@ namespace Infrastructure.ProTrack.Dependency_Injection
             services.AddScoped<IUserRepoInterface, UserRepository>();
             services.AddScoped<IEmailRepoInterface, EmailRepository>();
             services.AddScoped<IProjectRepoInterface, ProjectRepository>();
+            services.AddScoped<ITaskRepositoryInterface, TaskRepository>();
             return services;
         }
     }
