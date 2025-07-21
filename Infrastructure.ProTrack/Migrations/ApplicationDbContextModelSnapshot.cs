@@ -22,11 +22,44 @@ namespace Infrastructure.ProTrack.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Domain.ProTrack.Models.Comment", b =>
+                {
+                    b.Property<Guid>("CommentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CommentedProjectUserTaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CommentedTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedTime")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("CommentId");
+
+                    b.HasIndex("CommentedProjectUserTaskId");
+
+                    b.ToTable("Comments", (string)null);
+                });
+
             modelBuilder.Entity("Domain.ProTrack.Models.Project", b =>
                 {
                     b.Property<Guid>("ProjectId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
@@ -34,13 +67,16 @@ namespace Infrastructure.ProTrack.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ManagerId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
 
                     b.Property<string>("ProjectDescription")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProjectManagerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
@@ -53,14 +89,61 @@ namespace Infrastructure.ProTrack.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
 
                     b.HasKey("ProjectId");
 
-                    b.HasIndex("ManagerId");
+                    b.HasIndex("ProjectManagerId");
 
                     b.ToTable("Projects", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.ProTrack.Models.ProjectHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ChangeType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ChangedByUser")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ChangedByUserEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ChangedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ChangedUser")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ChangedUserEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewRole")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousRole")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProjectName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ProjectHistories", (string)null);
                 });
 
             modelBuilder.Entity("Domain.ProTrack.Models.ProjectUser", b =>
@@ -69,8 +152,10 @@ namespace Infrastructure.ProTrack.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime>("AssignedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("AssignedUserId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<Guid>("ProjectId")
@@ -103,6 +188,9 @@ namespace Infrastructure.ProTrack.Migrations
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("UserRole")
+                        .HasColumnType("int");
+
                     b.Property<bool>("isComplete")
                         .HasColumnType("bit");
 
@@ -115,11 +203,63 @@ namespace Infrastructure.ProTrack.Migrations
                     b.ToTable("ProjectUsersTask", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.ProTrack.Models.TaskHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ChangeType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ChangedByUser")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ChangedByUserEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ChangedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ChangedUser")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ChangedUserEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NewRole")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PreviousRole")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProjectName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TaskName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TaskHistories", (string)null);
+                });
+
             modelBuilder.Entity("Domain.ProTrack.Models.Tasks", b =>
                 {
                     b.Property<Guid>("TaskId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
@@ -131,6 +271,9 @@ namespace Infrastructure.ProTrack.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
@@ -140,10 +283,17 @@ namespace Infrastructure.ProTrack.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<string>("TaskManagerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedDate")
                         .HasColumnType("datetime2");
@@ -151,6 +301,8 @@ namespace Infrastructure.ProTrack.Migrations
                     b.HasKey("TaskId");
 
                     b.HasIndex("ProjectId");
+
+                    b.HasIndex("TaskManagerId");
 
                     b.ToTable("Tasks", (string)null);
                 });
@@ -388,15 +540,26 @@ namespace Infrastructure.ProTrack.Migrations
                     b.HasDiscriminator().HasValue("AppUser");
                 });
 
+            modelBuilder.Entity("Domain.ProTrack.Models.Comment", b =>
+                {
+                    b.HasOne("Domain.ProTrack.Models.ProjectUserTask", "CommentedProjectUserTask")
+                        .WithMany("Comments")
+                        .HasForeignKey("CommentedProjectUserTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CommentedProjectUserTask");
+                });
+
             modelBuilder.Entity("Domain.ProTrack.Models.Project", b =>
                 {
-                    b.HasOne("Domain.ProTrack.Models.AppUser", "AssignedManager")
+                    b.HasOne("Domain.ProTrack.Models.AppUser", "ProjectManager")
                         .WithMany("ProjectsManaged")
-                        .HasForeignKey("ManagerId")
+                        .HasForeignKey("ProjectManagerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("AssignedManager");
+                    b.Navigation("ProjectManager");
                 });
 
             modelBuilder.Entity("Domain.ProTrack.Models.ProjectUser", b =>
@@ -404,8 +567,7 @@ namespace Infrastructure.ProTrack.Migrations
                     b.HasOne("Domain.ProTrack.Models.AppUser", "AssignedUser")
                         .WithMany("ProjectUsers")
                         .HasForeignKey("AssignedUserId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Domain.ProTrack.Models.Project", "Project")
                         .WithMany("ProjectUsers")
@@ -445,7 +607,15 @@ namespace Infrastructure.ProTrack.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.ProTrack.Models.AppUser", "TaskManager")
+                        .WithMany("TaskManaged")
+                        .HasForeignKey("TaskManagerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Project");
+
+                    b.Navigation("TaskManager");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -511,6 +681,11 @@ namespace Infrastructure.ProTrack.Migrations
                     b.Navigation("ProjectUserTasks");
                 });
 
+            modelBuilder.Entity("Domain.ProTrack.Models.ProjectUserTask", b =>
+                {
+                    b.Navigation("Comments");
+                });
+
             modelBuilder.Entity("Domain.ProTrack.Models.Tasks", b =>
                 {
                     b.Navigation("ProjectUserTasks");
@@ -521,6 +696,8 @@ namespace Infrastructure.ProTrack.Migrations
                     b.Navigation("ProjectUsers");
 
                     b.Navigation("ProjectsManaged");
+
+                    b.Navigation("TaskManaged");
                 });
 #pragma warning restore 612, 618
         }

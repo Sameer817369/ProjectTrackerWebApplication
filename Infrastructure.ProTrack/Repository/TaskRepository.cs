@@ -1,136 +1,163 @@
-﻿using Domain.ProTrack.DTO.TaskDto;
-using Domain.ProTrack.Interface.RepoInterface;
-using Domain.ProTrack.Models;
+﻿using Domain.ProTrack.Models;
+using Domain.ProTrack.RepoInterface;
 using Infrastructure.ProTrack.Data;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
+using Shared.ProTrack.Dto;
+using static Domain.ProTrack.Enum.Enum;
 
 namespace Infrastructure.ProTrack.Repository
 {
     public class TaskRepository : ITaskRepositoryInterface
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<AppUser> _userManager;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        public TaskRepository(ApplicationDbContext context, UserManager<AppUser> userManager, IHttpContextAccessor httpContextAccessor)
+        public TaskRepository(ApplicationDbContext context)
         {
             _context = context;
-            _userManager = userManager;
-            _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<IdentityResult> CreateTaskAsync(Tasks taskModel, List<ProjectUserTask> projectUserTasks)
+        public async Task<bool> CreateTaskAsync(Tasks taskModel, List<ProjectUserTask> projectUserTasks)
         {
             try
             {
                 await _context.AddAsync(taskModel);
                 await _context.AddRangeAsync(projectUserTasks);
                 await _context.SaveChangesAsync();
-                return IdentityResult.Success;
+                return true;
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"Unexpected Error! Cannot Add Task To Database {ex.Message}");
             }   
         }
-
-        public Task<IdentityResult> DeleteTaskAsync()
+        public async Task<bool> CreateTaskHistoryForMembers(List<TaskHistory> taskHistoryModel)
         {
-            throw new NotImplementedException();
+            await _context.AddRangeAsync(taskHistoryModel);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        public async Task<bool> CreateTaskHistoryForManagers(TaskHistory taskHistoryModel)
+        {
+            await _context.AddRangeAsync(taskHistoryModel);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        public async Task<bool> DeleteTaskAsync(Tasks taskToDelete, Guid taskId)
+        {
+            _context.Tasks.Remove(taskToDelete);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
-        public async Task<string> GetProjectManagerAsync(Guid projectId)
+        public async Task<HashSet<ProjectUserTask>> GetMembersToRemove(List<string>idsToRemove, Guid taskId)
+        {
+            return await _context.ProjectUsersTask.Include(put=>put.ProjectUser).ThenInclude(pu=>pu.Project)
+                .Include(put=>put.ProjectUser).ThenInclude(u=>u.AssignedUser)
+                .Include(t=>t.Task)
+                .Where(u=> u.TaskId == taskId && idsToRemove.Contains(u.ProjectUser.AssignedUserId) && u.UserRole != UserRole.TaskManager)
+                .ToHashSetAsync();
+        }
+        public async Task<bool> DeleteMemberFromTask(List<ProjectUserTask> toRemove)
+        {
+            _context.ProjectUsersTask.RemoveRange(toRemove);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        public async Task<bool> DeleteManagerFromTask(ProjectUserTask toRemove)
+        {
+            _context.ProjectUsersTask.Remove(toRemove);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<Tasks> GetExistingTaskAsync(Guid taskId, Guid projectId)
         {
             try
             {
-                var currentUserId = _httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier).Value ?? throw new NullReferenceException("User not found");
-                var managerId = await _context.Projects.Where(u=>u.ManagerId == currentUserId && u.ProjectId == projectId).FirstOrDefaultAsync() 
-                                ?? throw new UnauthorizedAccessException("You are not assigned to the project");
-                return managerId.ManagerId.ToString();
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Unexpected Error! Failed to get project manager {ex.Message}");
-            }
-        }
-
-        public async Task<List<string>> GetProjectMembersAsync(Guid projectId, List<string> memberUsername)
-        {
-            try
-            {
-                var assignedMembersIds = new List<string>();
-                foreach (var username in memberUsername)
-                {
-                    var user = await _userManager.FindByNameAsync(username) ?? throw new NullReferenceException("Member not found");
-                    var projectMember = await _context.ProjectUsers.FirstOrDefaultAsync(p => p.ProjectId == projectId && p.AssignedUserId == user.Id)
-                                        ?? throw new UnauthorizedAccessException($"Member with username {username} not assigned to the project");
-                    assignedMembersIds.Add(projectMember.Id.ToString());
-                }
-                return assignedMembersIds;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Unexpected Error! Failed to get project member {ex.Message}"); 
-            }
-        }
-
-        public async Task<List<string>> GetProjectUserAsync(Guid projectId)
-        {
-            try
-            {
-                var projectUser = await _context.ProjectUsers.Where(u => u.ProjectId == projectId).ToListAsync();
-                if (!projectUser.Any()) throw new InvalidOperationException("Project User not found");
-                var memberIds = projectUser.Select(u=>u.Id.ToString()).ToList();
-                return memberIds;
-            }
-            catch(Exception ex)
-            {
-                throw new InvalidOperationException($"Unexpected Error! Project Users Not Found {ex.Message}");
-            }
-        }
-        public async Task<string> GetExistingTaskIdAsync(Guid taskId)
-        {
-            try
-            {
-                var task = await _context.Tasks.FirstOrDefaultAsync(u => u.TaskId == taskId) ?? throw new NullReferenceException("Task not found");
-                return await Task.FromResult(task.TaskId.ToString());
+                var task = await _context.Tasks.Include(u => u.ProjectUserTasks).FirstOrDefaultAsync(u => u.TaskId == taskId && u.ProjectId == projectId) ?? throw new NullReferenceException("Task not found");
+                return task;
             }
             catch(Exception ex)
             {
                 throw new InvalidOperationException($"Unexpected Error! Task Not Found {ex.Message}");
             }
         }
-
-        //public async Task<Project> GetProjectAsync(Guid projectId)
-        //{
-        //    try
-        //    {
-        //        var project = await _context.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId) ?? throw new NullReferenceException("Project not found");
-        //        return project;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        throw new InvalidOperationException($"Unexpected Error! Failed to get project {ex.Message}");
-
-        //    }
-
-        //}
-
-        public async Task<IdentityResult> UpdateTaskAsync(Tasks taskModel, List<ProjectUserTask> projectUserTasks)
+        public async Task<bool> UpdateTaskAsync(Tasks? taskModel, List<ProjectUserTask>? projectUserTasks)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                _context.Update(taskModel);
-                _context.UpdateRange(projectUserTasks);
+                if (taskModel != null)
+                {
+                    _context.Update(taskModel);
+                }
+                if (projectUserTasks != null || projectUserTasks.Any())
+                {
+                    await _context.AddRangeAsync(projectUserTasks);
+                }
                 await _context.SaveChangesAsync();
-                return IdentityResult.Success;
+                await transaction.CommitAsync();
+                return true;
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 throw new InvalidOperationException($"Unexpected Error! Cannot Update Task {ex.Message}");
             }
+        }
+        public async Task<bool> DeleteTaskAsync(Tasks taskToDelete)
+        {
+            try
+            {
+                _context.Tasks.Remove(taskToDelete);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Unexpected Error! Cannot Delete Task {ex.Message}");
+            }
+        }
+        public async Task<HashSet<string>> GetProjectUserTaskMembers(Guid taksId)
+        {
+            try
+            {
+                return await _context.ProjectUsersTask.Include(pu=>pu.ProjectUser)
+                    .Where(u => u.TaskId == taksId && u.UserRole != UserRole.TaskManager)
+                    .Select(u=> u.ProjectUser.AssignedUserId)
+                    .ToHashSetAsync();
+            }
+            catch(Exception ex)
+            {
+                throw new InvalidOperationException($"Unexpected Error! Cannot Find Task Memebers  {ex.Message}");
+            }
+        }
+        public async Task<string> GetProjectUserTaskManager(Guid taskId, Guid projectId)
+        {
+            return await _context.Tasks.Where(t => t.TaskId == taskId && t.ProjectId == projectId).Select(u=>u.TaskManagerId).FirstOrDefaultAsync();
+        }
+        public async Task<ProjectUserTask> GetTaskManagerToRemove(Guid taskId, string taskManagerId)
+        {
+            return await _context.ProjectUsersTask.Include(u => u.Task)
+                .Include(pu=>pu.ProjectUser).ThenInclude(u=>u.AssignedUser)
+                .Where(u => u.TaskId == taskId && u.UserRole == UserRole.TaskManager)
+                .FirstOrDefaultAsync();
+        }
+        public async Task<GetTaskDetailsDto> GetTaskDetails(Guid projectId,Guid taskId)
+        {
+            var tasksDetails = await _context.Tasks.Include(put => put.ProjectUserTasks)
+                .ThenInclude(u=>u.ProjectUser).ThenInclude(u=>u.AssignedUser)
+                .FirstOrDefaultAsync(t=>t.TaskId == taskId && t.ProjectId == projectId);
+            return new GetTaskDetailsDto 
+            {
+                TaskTitle = tasksDetails.Title,
+                TaskMembers = tasksDetails.ProjectUserTasks.Select(put=>new TaskMembersDto
+                {
+                    Name = put.ProjectUser.AssignedUser.UserName,
+                    UserRole = put.UserRole.ToString(),
+                }).ToList(),
+            };
+
         }
     }
 }

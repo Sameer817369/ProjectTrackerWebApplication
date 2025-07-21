@@ -1,5 +1,5 @@
-﻿using Domain.ProTrack.Interface.RepoInterface;
-using Domain.ProTrack.Models;
+﻿using Domain.ProTrack.Models;
+using Domain.ProTrack.RepoInterface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;

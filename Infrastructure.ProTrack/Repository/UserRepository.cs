@@ -1,13 +1,9 @@
-﻿using Domain.ProTrack.DTO;
-using Domain.ProTrack.Interface.RepoInterface;
-using Domain.ProTrack.Models;
+﻿using Domain.ProTrack.Models;
+using Domain.ProTrack.RepoInterface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
-using System.Text;
 
 namespace Infrastructure.ProTrack.Repository
 {
@@ -35,7 +31,7 @@ namespace Infrastructure.ProTrack.Repository
             }
             catch(Exception ex)
             {
-                throw new Exception($"Usexpected error while registering user {ex.Message}");
+                throw new ApplicationException($"Usexpected error while registering user {ex.Message}");
             }
         }
         public Task DeleteUserAsync(string userId)
@@ -53,11 +49,6 @@ namespace Infrastructure.ProTrack.Repository
             var user = _userManager.FindByIdAsync(userId);
             if (string.IsNullOrEmpty(userId)) throw new UnauthorizedAccessException("User not found");
             return user;
-        }
-
-        public Task UpdateUserAsync(string userId, UpdateUserDto updateUser)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<AppUser?> GetUserEmailAsync(string email)
@@ -97,6 +88,10 @@ namespace Infrastructure.ProTrack.Repository
             {
                 throw new KeyNotFoundException($"Unexpected Error! User not found {ex.Message}");
             }
+        }
+        public Task UpdateUserAsync(string userId)
+        {
+            throw new NotImplementedException();
         }
     }
 }

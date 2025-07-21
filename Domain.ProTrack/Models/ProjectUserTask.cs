@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using static Domain.ProTrack.Enum.Enum;
 
 namespace Domain.ProTrack.Models
 {
@@ -16,6 +17,8 @@ namespace Domain.ProTrack.Models
         public bool isComplete { get; set; } = false;
         [Required]
         public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
-
+        [Required]
+        public UserRole UserRole { get; set; }
+        public ICollection<Comment> Comments { get; set; }
     }
 }

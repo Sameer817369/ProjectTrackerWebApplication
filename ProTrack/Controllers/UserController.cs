@@ -1,5 +1,5 @@
-﻿using Domain.ProTrack.DTO;
-using Domain.ProTrack.Interface;
+﻿using Application.ProTrack.DTO;
+using Application.ProTrack.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProTrack.Controllers
@@ -48,6 +48,23 @@ namespace ProTrack.Controllers
                 return BadRequest(new { Message = "Confirmation Error", Error = "Failed to confirm email" });
             }
             catch(Exception ex)
+            {
+                return StatusCode(500, new { Message = "Internal Server Error! Failed to confirm email", Error = ex.Message });
+            }
+        }
+        [HttpGet("conform-email/{userId}/{token}")]
+        public async Task<IActionResult> ConformEmailAsync(string userId, string token)
+        {
+            try
+            {
+                var result = await _customeEmail.ConfirmEmailAsync(userId, token);
+                if (result)
+                {
+                    return Ok("Email Confirmed");
+                }
+                return BadRequest(new { Message = "Confirmation Error", Error = "Failed to confirm email" });
+            }
+            catch (Exception ex)
             {
                 return StatusCode(500, new { Message = "Internal Server Error! Failed to confirm email", Error = ex.Message });
             }

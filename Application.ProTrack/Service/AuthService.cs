@@ -1,9 +1,8 @@
-﻿using Domain.ProTrack.DTO;
-using Domain.ProTrack.Interface;
-using Domain.ProTrack.Interface.RepoInterface;
+﻿using Domain.ProTrack.RepoInterface;
 using Domain.ProTrack.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using Application.ProTrack.DTO;
 
 namespace Application.ProTrack.Service
 {

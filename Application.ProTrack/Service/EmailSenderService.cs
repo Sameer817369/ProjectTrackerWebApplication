@@ -1,5 +1,4 @@
-﻿using Domain.ProTrack.Interface;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Mail;

@@ -1,4 +1,4 @@
-﻿using Domain.ProTrack.Interface.RepoInterface;
+﻿using Domain.ProTrack.RepoInterface;
 using Infrastructure.ProTrack.Repository;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -17,6 +17,8 @@ namespace Infrastructure.ProTrack.Dependency_Injection
             services.AddScoped<IEmailRepoInterface, EmailRepository>();
             services.AddScoped<IProjectRepoInterface, ProjectRepository>();
             services.AddScoped<ITaskRepositoryInterface, TaskRepository>();
+            services.AddScoped<ICommentRepoInterface, CommentRepository>();
+            services.AddScoped<IUnitOfWork,UnitOfWork>();
             return services;
         }
     }

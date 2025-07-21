@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35919.96 d17.13
+VisualStudioVersion = 17.13.35919.96
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProTrack", "ProTrack\ProTrack.csproj", "{9DA226A9-DEAB-496F-BD43-B06579DB36C3}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure.ProTrack", "Infrastructure.ProTrack\Infrastructure.ProTrack.csproj", "{08BF097D-F4CD-49FA-BA4E-A586AE4DC0EF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application.ProTrack", "Application.ProTrack\Application.ProTrack.csproj", "{702F4A8A-75F3-41E7-98F2-ECDE1A0767E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared.ProTrack", "Shared.ProTrack\Shared.ProTrack.csproj", "{1AFCA9D0-1534-4E8D-98ED-2FBCC880E69A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{702F4A8A-75F3-41E7-98F2-ECDE1A0767E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{702F4A8A-75F3-41E7-98F2-ECDE1A0767E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{702F4A8A-75F3-41E7-98F2-ECDE1A0767E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1AFCA9D0-1534-4E8D-98ED-2FBCC880E69A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AFCA9D0-1534-4E8D-98ED-2FBCC880E69A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AFCA9D0-1534-4E8D-98ED-2FBCC880E69A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AFCA9D0-1534-4E8D-98ED-2FBCC880E69A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -11,6 +11,9 @@ namespace Infrastructure.ProTrack.Data.SeedRoles
             {
                 "Admin",
                 "Employee",
+                "Project Manager",
+                "Task Manager",
+                "Member"
             };
             foreach(var role in roles)
             {

@@ -12,9 +12,9 @@ namespace Infrastructure.ProTrack.Data
             base.OnModelCreating(builder);
 
             builder.Entity<Project>()
-                .HasOne(p=> p.AssignedManager) //has one manager
+                .HasOne(p=> p.ProjectManager) //has one manager
                 .WithMany(u=>u.ProjectsManaged)// one manager can manage many project (navigation in appuser)
-                .HasForeignKey(p => p.ManagerId)// foreign key 
+                .HasForeignKey(p => p.ProjectManagerId)// foreign key 
                 .OnDelete(DeleteBehavior.Restrict);// cannot delete user who is a manager in an project
 
             builder.Entity<ProjectUser>()
@@ -35,6 +35,12 @@ namespace Infrastructure.ProTrack.Data
                 .HasForeignKey(t => t.ProjectId) // foreign key
                 .OnDelete(DeleteBehavior.Cascade); // project deleted all related task also deleted
 
+            builder.Entity<Tasks>()
+                .HasOne(t => t.TaskManager)
+                .WithMany(u => u.TaskManaged)
+                .HasForeignKey(t => t.TaskManagerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             builder.Entity<ProjectUserTask>()
                 .HasOne(t=>t.Task)// one task
                 .WithMany(t=>t.ProjectUserTasks)// many members(navigation property in Task)
@@ -46,6 +52,12 @@ namespace Infrastructure.ProTrack.Data
                 .WithMany(pu => pu.ProjectUserTasks) // projectuser can be assigned to multiple task (nav projerty in projectuser)
                 .HasForeignKey(put => put.ProjectUserId) //foreign key
                 .OnDelete(DeleteBehavior.Restrict);// cannot delete projectuser assigned to taks
+
+            builder.Entity<Comment>()
+                .HasOne(c=>c.CommentedProjectUserTask)
+                .WithMany(p=>p.Comments)
+                .HasForeignKey(c=>c.CommentedProjectUserTaskId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
@@ -55,5 +67,8 @@ namespace Infrastructure.ProTrack.Data
         public DbSet<ProjectUser> ProjectUsers { get; set; }
         public DbSet<Tasks> Tasks { get; set; }
         public DbSet<ProjectUserTask> ProjectUsersTask { get; set; }
+        public DbSet<Comment> Comments  { get; set; }
+        public DbSet<ProjectHistory> ProjectHistories { get; set; }
+        public DbSet<TaskHistory> TaskHistories { get; set; } 
     }
 }

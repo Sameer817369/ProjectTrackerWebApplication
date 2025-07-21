@@ -1,8 +1,8 @@
-﻿using Domain.ProTrack.DTO.ProjectDto;
-using Domain.ProTrack.Interface.RepoInterface;
-using Domain.ProTrack.Models;
+﻿using Domain.ProTrack.Models;
+using Domain.ProTrack.RepoInterface;
 using Infrastructure.ProTrack.Data;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Shared.ProTrack.DTO;
 using static Domain.ProTrack.Enum.Enum;
 
 namespace Infrastructure.ProTrack.Repository
@@ -10,72 +10,168 @@ namespace Infrastructure.ProTrack.Repository
     public class ProjectRepository : IProjectRepoInterface
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<AppUser> _userManager;
-
-        public ProjectRepository(ApplicationDbContext context, UserManager<AppUser> userManager)
+        public ProjectRepository(ApplicationDbContext context)
         {
             _context = context;
-            _userManager = userManager;
         }
-        public async Task<IdentityResult> CreateProjectAsync(Project projectModel, List<ProjectUser> projectUsersModel)
+        public async Task<bool> CreateProjectAsync(Project projectModel, List<ProjectUser> projectUsersModel)
         {
-            try
-            {
-                await _context.Projects.AddAsync(projectModel);
-                await _context.ProjectUsers.AddRangeAsync(projectUsersModel);
-                await _context.SaveChangesAsync();
-                return (IdentityResult.Success);
-            }
-            catch(Exception ex)
-            {
-                throw new InvalidOperationException($"Unexpected Error! Failed to create project {ex.Message}");
-            }
+            await _context.Projects.AddAsync(projectModel);
+            await _context.ProjectUsers.AddRangeAsync(projectUsersModel);
+            await _context.SaveChangesAsync();
+            return true;
         }
-        public async Task<IdentityResult> UpdateProjectAsync(Project projectModel, List<ProjectUser> projectUsersModel)
-        {
-            try
-            {
-                _context.Projects.Update(projectModel);
-                _context.ProjectUsers.UpdateRange(projectUsersModel);
-                await _context.SaveChangesAsync();
-                return (IdentityResult.Success);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Unexpected Error! Failed to update project {ex.Message}");
-            }
-        }
-        public async Task<string> FindManagerInfo(string managerUsername)
-        {
-            try
-            {
-                var manager = await _userManager.FindByNameAsync(managerUsername);
-                if (manager == null) return("Error! Manager is empty");
-                return manager.Id.ToString();
-            }
-            catch(Exception ex)
-            {
-                throw new UnauthorizedAccessException($"Unexpected error! Manager not found {ex.Message}");
-            }
-        }
-        public async Task<List<string>> FindMemberInfo(List<string> memberUsername)
-        {
-            try
-            {
-                var members = new List<string>();
 
-                foreach (var username in memberUsername.Distinct())
+        public async Task<bool> UpdateProjectWithMembersAsync(Project? project, List<ProjectUser>? newMembers)
+        {
+            try
+            {
+                // Only update project if it's provided
+                if (project != null)
                 {
-                    var member = await _userManager.FindByNameAsync(username);
-                    if (member == null) throw new InvalidOperationException("Member not found");
-                    members.Add(member.Id);
+                    _context.Projects.Update(project);
                 }
-                return members;
+
+                // Only add members if provided
+                if (newMembers != null && newMembers.Any())
+                {
+                    await _context.ProjectUsers.AddRangeAsync(newMembers);
+                }
+                return true;
             }
             catch (Exception ex)
             {
-                throw new UnauthorizedAccessException($"Unexpected error! Member not found {ex.Message}");
+                return false;
             }
+        }
+        public async Task<bool> DeleteProjectAsync(Project project)
+        {
+            _context.Projects.Remove(project);
+            return true;
+        }
+        public async Task<bool> RemoveProjectMembersAsync(List<ProjectUser> projectUsersModel)
+        {
+            try
+            {
+                _context.ProjectUsers.RemoveRange(projectUsersModel);
+                return true;
+            }
+            catch (Exception ex) 
+            {
+                throw new ApplicationException(ex.Message);
+            }
+        }
+        public async Task<bool> RemoveProjectManagerAsync(ProjectUser projectUsersModel)
+        {
+            try
+            {
+                _context.ProjectUsers.Remove(projectUsersModel);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException(ex.Message);
+            }
+        }
+        public async Task<List<Project>> GetAllProjectAsync()
+        {
+            try
+            {
+                return await _context.Projects.ToListAsync();
+            }
+            catch(Exception ex)
+            {
+                throw new ApplicationException(ex.Message);
+            }
+        }
+        public async Task<List<string>> GetAllProjectMembersIds(Guid projectId)
+        {
+            return await _context.ProjectUsers.Where(p => p.ProjectId == projectId)
+                .Select(u => u.AssignedUserId)
+                .ToListAsync();
+        }
+        public async Task<Project> GetProjectAsync(Guid projectId)
+        {
+            return await _context.Projects
+                .Include(t=> t.Tasks)
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId);
+        }
+        public async Task<string> GetProjectManagerAsync(Guid projectId)
+        {
+            return await _context.Projects.Where(u => u.ProjectId == projectId)
+                .Select(p=>p.ProjectManagerId)
+                .FirstOrDefaultAsync();
+        }
+        public async Task<List<(string AssignedUserId, Guid ProjectUserId)>> GetProjectUsersAsync(Guid projectId, List<string> memberUsername, string managerUsername)
+        {
+            var allUser = memberUsername.Append(managerUsername);
+            return await _context.ProjectUsers
+                .Include(u => u.AssignedUser)
+                .Where(pu => pu.ProjectId == projectId && allUser.Contains(pu.AssignedUser.UserName))
+                .Select(u => new ValueTuple<string, Guid>(u.AssignedUserId, u.Id))
+                .ToListAsync();
+        }
+        public async Task<List<ProjectUser>> GetMembersToRemove(Guid projectId, List<string> idsToRemove)
+        {
+            return await _context.ProjectUsers.Include(u=>u.AssignedUser).Include(p=>p.Project).Where(pu => pu.ProjectId == projectId && idsToRemove.Contains(pu.AssignedUserId)).ToListAsync();
+        }
+        public async Task<ProjectUser> GetManagerToRemove(Guid projectId, string managerId)
+        {
+            return await _context.ProjectUsers.Include(u => u.AssignedUser).Include(p => p.Project).FirstOrDefaultAsync(u => u.ProjectId == projectId && u.AssignedUserId == managerId);
+        }
+        public async Task<HashSet<string>> GetExistingProjectMemberIds(Guid projectId)
+        {
+            return await _context.ProjectUsers.Where(u => u.ProjectId == projectId && u.UserRole != UserRole.ProjectManager).Select(u=>u.AssignedUserId).ToHashSetAsync();
+        }
+        public async Task<string> GetExistingProjectManagerIds(Guid projectId)
+        {
+            return await _context.ProjectUsers.Where(u => u.ProjectId == projectId && u.UserRole == UserRole.ProjectManager).Select(u => u.AssignedUserId).FirstOrDefaultAsync();
+        }
+        public async Task<GetProjectDetailsDto> GetProjectDetails(Guid projectId)
+        {
+            var project = await _context.Projects.SingleOrDefaultAsync(p => p.ProjectId == projectId);
+            var projectDetails = await _context.ProjectUsers.Include(pu => pu.AssignedUser)
+                .Include(t=>t.ProjectUserTasks).ThenInclude(t=>t.Task)
+                .Where(pu => pu.ProjectId == projectId)
+                .ToListAsync();
+            return new GetProjectDetailsDto
+            {
+                ProjectId = project.ProjectId,
+                ProjectTitle = project.Title,
+                StartDate = project.StartDate,
+                EndDate = project.EndDate,
+                ProjectStatus = project.Status.ToString(),
+                Priority = project.Priority.ToString(),
+                ProjectMembers = projectDetails.Select(u => new ProjectUsersDto
+                {
+                    MemberUsername = u.AssignedUser.UserName,
+                    MemeberRole = u.UserRole.ToString()
+                }).ToList(),
+                ProjectTasks = projectDetails.SelectMany(pd => pd.ProjectUserTasks)
+                .Where(put => put.ProjectUser.ProjectId == projectId)
+                .Select(put=>put.Task).Distinct()
+                .Select(task=> new ProjectTaskDto
+                {
+                    TaskId = task.TaskId,
+                    TaskTile = task.Title,
+                    TaskStartDate = task.StartDate,
+                    TaskEndDate = task.EndDate,
+                    TaskStatus = task.Status.ToString()
+                }).ToList()
+            };
+        }
+
+        public async Task<bool> CreateProjectHistory(List<ProjectHistory>? projectMemberHistoryModel, ProjectHistory? projectHistoryManagerModel)
+        {
+            if (projectMemberHistoryModel != null && projectMemberHistoryModel.Any())
+            {
+                await _context.ProjectHistories.AddRangeAsync(projectMemberHistoryModel);
+            }
+            if (projectHistoryManagerModel != null)
+            {
+                await _context.ProjectHistories.AddAsync(projectHistoryManagerModel);
+            }
+            return true;
         }
     }
 }

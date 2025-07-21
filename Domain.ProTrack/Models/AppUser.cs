@@ -19,6 +19,7 @@ namespace Domain.ProTrack.Models
         public int Age { get; set; }
         public ICollection<ProjectUser> ProjectUsers { get; set; } = new List<ProjectUser>();
         public ICollection<Project> ProjectsManaged { get; set; } = new List<Project>();
+        public ICollection<Tasks> TaskManaged { get; set; } = new List<Tasks>();
 
     }
 }
