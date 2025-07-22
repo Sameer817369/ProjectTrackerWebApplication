@@ -17,12 +17,12 @@ namespace Application.ProTrack.Service
         private readonly IUserServiceInterface _userService;
         private readonly IProjectRepoInterface _projectRepo;
 
-        private readonly IProjectEmailNotificationHelperInterface _projectEmailNotificationHelper;
+        private readonly IEmailNotificationHelperInterface _projectEmailNotificationHelper;
         public ProjectHelperService(UserManager<AppUser> userManager, 
             ILogger<IProjectHelperService> logger, 
             IUserServiceInterface userService,
             IProjectRepoInterface projectRepo, 
-            IProjectEmailNotificationHelperInterface projectEmailNotificationHelper)
+            IEmailNotificationHelperInterface projectEmailNotificationHelper)
         {
             _userManager = userManager;
             _logger = logger;
@@ -100,7 +100,7 @@ namespace Application.ProTrack.Service
                     };
                     if (projectHistoryModel != null)
                     {
-                        _projectEmailNotificationHelper.QueueManagerRemovedEmail(existingManagerId, projectHistoryModel.ProjectName);
+                        _projectEmailNotificationHelper.QueueManagerRemovedEmail(existingManagerId, projectHistoryModel.ProjectName,null,null, null);
                         await _projectRepo.CreateProjectHistory(null, projectHistoryModel);
                     }
                 }
@@ -153,7 +153,7 @@ namespace Application.ProTrack.Service
                                 ?? throw new KeyNotFoundException("Project title not found");
 
                             //queue removed members mail notification
-                            _projectEmailNotificationHelper.QueueRemovedMemberEmail(userToRemoveSetIds, projectTitle);
+                            _projectEmailNotificationHelper.QueueRemovedMemberEmail(userToRemoveSetIds, projectTitle, null);
 
                             await _projectRepo.CreateProjectHistory(projectHistoryModel, null);
                         }

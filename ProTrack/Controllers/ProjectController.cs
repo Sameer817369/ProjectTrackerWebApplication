@@ -95,13 +95,13 @@ namespace ProTrack.Controllers
                 var result = await _projectService.RemoveProject(projectId);
                 if (result.Succeeded)
                 {
-                    return Ok("Project Updated Successfully");
+                    return Ok("Project Deleted Successfully");
                 }
-                return BadRequest($"Failed to update project {result.Errors}");
+                return BadRequest($"Failed to Delete project {result.Errors}");
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = ex.Message, Error = "Internal Server Error! Failed To Update Project" });
+                return StatusCode(500, new { message = ex.Message, Error = "Internal Server Error! Failed To Delete Project" });
             }
         }
     } 

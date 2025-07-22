@@ -1,4 +1,5 @@
 ﻿using Application.ProTrack.DTO.TaskDto;
+using Application.ProTrack.Service.Interface;
 using Domain.ProTrack.Models;
 using Domain.ProTrack.RepoInterface;
 using Microsoft.AspNetCore.Identity;
@@ -16,7 +17,20 @@ namespace Application.ProTrack.Service
         private readonly IUserRepoInterface _userRepo;
         private readonly IProjectRepoInterface _projectRepo;
         private readonly IUserServiceInterface _userService;
-        public TaskService(ITaskRepositoryInterface taskRepo, ILogger<ITaskServiceInterface> logger, IUserRepoInterface userRepo, IProjectRepoInterface projectRepo, UserManager<AppUser> userManager, IUserServiceInterface userService)
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly ITaskHelperServiceInterface _taskHelperService;
+        private readonly IEmailNotificationHelperInterface _emailNotificationHelper;
+        private readonly IEmailDispatcherServiceInterface _emailDispatcherService;
+        public TaskService(ITaskRepositoryInterface taskRepo,
+            ILogger<ITaskServiceInterface> logger, 
+            IUserRepoInterface userRepo,
+            IProjectRepoInterface projectRepo,
+            UserManager<AppUser> userManager, 
+            IUserServiceInterface userService,
+            IUnitOfWork unitOfWork,
+            ITaskHelperServiceInterface taskHelperService,
+            IEmailNotificationHelperInterface emailNotificationHelper,
+            IEmailDispatcherServiceInterface emailDispatcherService)
         {
             _taskRepo = taskRepo;
             _logger = logger;
@@ -24,14 +38,20 @@ namespace Application.ProTrack.Service
             _projectRepo = projectRepo;
             _userManager = userManager;
             _userService = userService;
+            _unitOfWork = unitOfWork;
+            _emailNotificationHelper = emailNotificationHelper;
+            _taskHelperService = taskHelperService;
+            _emailDispatcherService = emailDispatcherService;
         }
         public async Task<IdentityResult> CreateTask(CreateTaskDto createTask, Guid projectId)
         {
+            await _unitOfWork.BeginTransactionAsync();
             try
             {
                 var incomingTaskManager= await _userManager.FindByNameAsync(createTask.ManagerUsername)
                     ?? throw new InvalidOperationException("Manager not found");
                 var projectMembers = await _projectRepo.GetProjectUsersAsync(projectId, createTask.MemberUsername, createTask.ManagerUsername) ?? throw new InvalidOperationException("Couldnt fetch members");
+                var project = await _projectRepo.GetProjectAsync(projectId);
                 var taksProject = await _projectRepo.GetProjectAsync(projectId);
                 if (!projectMembers.Any(member => member.AssignedUserId == incomingTaskManager.Id))
                 {
@@ -68,12 +88,24 @@ namespace Application.ProTrack.Service
                 if (result)
                 {
                     await _userManager.AddToRoleAsync(incomingTaskManager, "Task Manager");
+                    //queuing emails
+                    var membersToSendEmail = projectMembers.Where(u=> u.AssignedUserId != incomingTaskManager.Id).Select(u => u.AssignedUserId).ToHashSet();
+                    _emailNotificationHelper.QueueProjectTaskCreationEmails(project.ProjectManagerId, membersToSendEmail, project.Title, incomingTaskManager.Id, createTask.Title);
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+                    await _emailDispatcherService.DispatchAsync();
+
                     return IdentityResult.Success;
                 }
-                return IdentityResult.Failed(new IdentityError { Description = "Failed to create task" });
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Code = "TaskNotCreated",
+                    Description = "Failed to create task" 
+                });
             }
             catch (Exception ex)
             {
+                await _unitOfWork.RollBackTransactionAsync();
                 _logger.LogError(ex, $"Unexpected Error! Failed to create taks for project {projectId}");
                 throw new InvalidOperationException($"Unexpected Error! Failed to create task",ex);
             }
@@ -94,6 +126,7 @@ namespace Application.ProTrack.Service
 
         public async Task<IdentityResult> UpdateTaskAsync(UpdateTaskDto updateTask, Guid projectId, Guid taskId)
          {
+            await _unitOfWork.BeginTransactionAsync();
             try
             {
                 var currentUser = await _userService.GetCurrentUser();
@@ -102,6 +135,7 @@ namespace Application.ProTrack.Service
                     ?? throw new KeyNotFoundException($"Task with id '{taskId}' not found");
                 var taksProject = await _projectRepo.GetProjectAsync(projectId);
                 var initialTaskManagerId = await _taskRepo.GetProjectUserTaskManager(taskId, projectId);
+                var initialManagerIdSet = new HashSet<string> { initialTaskManagerId };
                 var initialManager = await _userManager.FindByIdAsync(initialTaskManagerId);
                 var incomingManager = await _userManager.FindByNameAsync(updateTask.managerUsername) 
                     ?? throw new KeyNotFoundException("Manager doesnot exist");
@@ -114,7 +148,7 @@ namespace Application.ProTrack.Service
                 taskMembersToRemove.ExceptWith(verifiedIncomingMembersIds);
                 if (taskMembersToRemove.Any())
                 {
-                    await RemoveMemberFromTask(taskMembersToRemove, taskId, initialManager,incomingManager, projectId);
+                    await _taskHelperService.RemoveMemberFromTask(taskMembersToRemove, taskId, initialManager,incomingManager, projectId);
                 }
                 //Getting the current existing memebers after cleansing
                 var currentTaskMembersIds = await _taskRepo.GetProjectUserTaskMembers(taskId);
@@ -127,7 +161,7 @@ namespace Application.ProTrack.Service
                 {
                     if (isProjectManager)
                     {
-                        await RemovePerviousManager(taskId, initialTaskManagerId, projectId, newTaskMembers.Select(u => u.AssignedUserId).ToList());
+                        await _taskHelperService.RemovePerviousManager(taskId, initialTaskManagerId, projectId, newTaskMembers.Select(u => u.AssignedUserId).ToHashSet());
                         var managerToAdd = verifiedIncomingMembers.FirstOrDefault(u => u.AssignedUserId == incomingManagerId);
                         var manager = await _userManager.FindByIdAsync(managerToAdd.AssignedUserId);
                         projectUserTaskModel.Add(new ProjectUserTask
@@ -139,8 +173,15 @@ namespace Application.ProTrack.Service
                         existingTask.TaskManagerId = incomingManagerId;
                         existingTask.UpdatedDate = DateTime.UtcNow;
                         await _userManager.AddToRoleAsync(manager, "Task Manager");
+            
+                        //data to send in email
+                        var currentProject = await _projectRepo.GetProjectAsync(projectId);
+                        var membersToSendEmail = currentTaskMembersIds.Where(id => id != incomingManagerId).ToHashSet();
+                        var projectTitle = currentProject.Title;
+                        var projectManagerId = currentProject.ProjectManagerId;
+                        var taskTitle = updateTask.Title;
+                        _emailNotificationHelper.QueueManagerChangedEmail(membersToSendEmail, projectTitle,projectManagerId, incomingManagerId, taskTitle);
                     }
-
                 }
 
                 if (updateTask.StartDate > updateTask.EndDate || updateTask.StartDate < taksProject.StartDate || updateTask.EndDate > taksProject.EndDate)
@@ -151,7 +192,7 @@ namespace Application.ProTrack.Service
                         Description = "Date range must align with the project's timeline"
                     });
                 }
-                bool hasChanged = HasChanged(existingTask, updateTask);
+                bool hasChanged = _taskHelperService.HasChanged(existingTask, updateTask);
                 if (hasChanged)
                 {
                     existingTask.Title = updateTask.Title;
@@ -173,9 +214,17 @@ namespace Application.ProTrack.Service
                             TaskId = taskId,
                             UserRole = UserRole.Member
                         }).ToList());
+                        //data to send in email
+                        var membersToSendEmail = newTaskMembers.Select(u => u.AssignedUserId).ToHashSet();
+                        membersToSendEmail.Except(initialManagerIdSet);
+                        var currentProject = await _projectRepo.GetProjectAsync(projectId);
+                        var projectTitle = currentProject.Title;
+                        var projectManagerId = currentProject.ProjectManagerId;
+                        var taskTitle = updateTask.Title;
+                        _emailNotificationHelper.QueueNewlyAddedMembersEmail(membersToSendEmail, projectManagerId, projectTitle, incomingManagerId, taskTitle);
                     }
                 }
-                var shouldSkip = ShouldSkipTaskUpdate(incomingManagerId,initialTaskManagerId, hasChanged, newTaskMembers.Select(u=>u.AssignedUserId).ToHashSet());
+                var shouldSkip = _taskHelperService.ShouldSkipTaskUpdate(incomingManagerId,initialTaskManagerId, hasChanged, newTaskMembers.Select(u=>u.AssignedUserId).ToHashSet());
                 if (shouldSkip)
                 {
                     _logger.LogInformation("No updates for task '{TaskId}'. Skipped because manager unchanged, no member diff, and title unchanged.", taskId);
@@ -184,12 +233,16 @@ namespace Application.ProTrack.Service
                 var result = await _taskRepo.UpdateTaskAsync(existingTask, projectUserTaskModel);
                 if (result)
                 {
+                    await _unitOfWork.SaveChangesAsync();
+                    await _unitOfWork.CommitTransactionAsync();
+                    await _emailDispatcherService.DispatchAsync();
                     return IdentityResult.Success;
                 }
                 return IdentityResult.Failed(new IdentityError { Description = "Unexpected error! Failed to assign new members to the task." });
             }
             catch (Exception ex)
             {
+                await _unitOfWork.RollBackTransactionAsync();
                 _logger.LogError(ex,"Failed to update task '{TaskId}' in project '{ProjectId}'",taskId, projectId);
                 throw new InvalidOperationException($"Unexpected Error! Failed to update task {ex.Message}");
             }
@@ -202,6 +255,7 @@ namespace Application.ProTrack.Service
                 if (taskToRemove != null)
                 {
                     await _taskRepo.DeleteTaskAsync(taskToRemove);
+                    await _unitOfWork.SaveChangesAsync();
                     return IdentityResult.Success;
                 }
                 return IdentityResult.Failed(new IdentityError { Description = "Unexpected Error! Failed to remove task" });
@@ -210,109 +264,6 @@ namespace Application.ProTrack.Service
             {
                 _logger.LogError(ex, "Unexpected Error! Failed to remove task '{taskId}'", taskId);
                 throw new InvalidOperationException($"Unexpected Error! Failed to remove task {ex.Message}");
-            }
-        }
-        //check if task table has updates
-        private bool HasChanged(Tasks existingTask, UpdateTaskDto updateTask)
-        {
-            return existingTask.Title != updateTask.Title
-                || existingTask.EndDate != updateTask.EndDate
-                || existingTask.StartDate != updateTask.StartDate
-                || existingTask.Description != updateTask.Description
-                || existingTask.Priority != updateTask.Priority;
-        }
-        //check if any update is done in the tasks
-        private bool ShouldSkipTaskUpdate(string incomingManagerId, string initialManagerId,bool hasChanged, HashSet<string>newMembersIds)
-        {
-            return incomingManagerId == initialManagerId
-                && !hasChanged
-                && !newMembersIds.Any();
-        }
-        public async Task<bool> RemoveMemberFromTask(HashSet<string> incomingMemberId,Guid taskId, AppUser initialManager,AppUser incomingManager, Guid projectId)
-        {
-            try
-            {
-                var membersToRemove = incomingMemberId.ToList();
-                var projectManagerId = await _projectRepo.GetProjectManagerAsync(projectId);
-                var projectManager = _userManager.FindByIdAsync(projectManagerId);
-                var trackedMembersToRemove = await _taskRepo.GetMembersToRemove(membersToRemove, taskId);
-                var incomingManagerId = incomingManager.Id;
-                var result = await _taskRepo.DeleteMemberFromTask(trackedMembersToRemove.ToList());
-                if (result)
-                {
-                    var taskHistoryModel = new List<TaskHistory>();
-                    taskHistoryModel.AddRange(
-                    trackedMembersToRemove.Select(u =>
-                    {
-                        var isPromoted = u.ProjectUser.AssignedUserId == incomingManagerId;
-                        return new TaskHistory
-                        {
-                            ProjectName = u.ProjectUser.Project.Title,
-                            TaskName = u.Task.Title,
-                            ChangedUser = u.ProjectUser.AssignedUser.UserName,
-                            ChangedUserEmail = u.ProjectUser.AssignedUser.Email,
-                            ChangedByUser = isPromoted ? projectManager.Result.UserName : initialManager.UserName,
-                            ChangedByUserEmail = isPromoted ? projectManager.Result.Email : initialManager.Email,
-                            PreviousRole = "Member",
-                            ChangeType = isPromoted ? Changed.Promoted : Changed.Removed,
-                            NewRole = isPromoted ? "Task Manager" : null
-                        };
-                    }).ToList());
-                    if (taskHistoryModel.Any())
-                    {
-                        await _taskRepo.CreateTaskHistoryForMembers(taskHistoryModel);
-                    }
-                    return true;
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected Error! Failed to remove members from task '{taskId}'", taskId);
-                throw new InvalidOperationException($"Unexpected Error! Failed to remove members from task",ex);
-            }
-        }
-        public async Task<bool> RemovePerviousManager(Guid taskId, string initialTaskManagerId, Guid projectId, List<string>AssignedUserId)
-        {
-            try
-            {
-                var project = await _projectRepo.GetProjectAsync(projectId);
-                var task = project.Tasks.FirstOrDefault(u => u.TaskId == taskId);
-                var managerToRemove = await _taskRepo.GetTaskManagerToRemove(taskId, initialTaskManagerId);
-                var projectManagerId = await _projectRepo.GetProjectManagerAsync(projectId);
-                var projectManager = _userManager.FindByIdAsync(projectManagerId);
-                var managerDetails = managerToRemove.ProjectUser.AssignedUser;
-                var newMembers = new HashSet<string>(AssignedUserId);
-                var isPresent = newMembers.Contains(managerDetails.Id);
-                var removed = await _taskRepo.DeleteManagerFromTask(managerToRemove);
-                if (removed)
-                {
-                    var user = await _userManager.FindByIdAsync(initialTaskManagerId);
-                    await _userManager.RemoveFromRoleAsync(user, "Task Manager");
-                    var taskHistoryModel = new TaskHistory
-                    {
-                        ProjectName = project.Title,
-                        TaskName = task.Title,
-                        ChangedUser = managerDetails.UserName,
-                        ChangedUserEmail = managerDetails.Email,
-                        ChangedByUser = projectManager.Result.UserName,
-                        ChangedByUserEmail = projectManager.Result.Email,
-                        PreviousRole = "Task Manager",
-                        ChangeType = isPresent ? Changed.Demoted : Changed.Removed,
-                        NewRole = isPresent ? "Member" : null
-                    };
-                    if (taskHistoryModel != null)
-                    {
-                        await _taskRepo.CreateTaskHistoryForManagers(taskHistoryModel);
-                    }
-                    return true;
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected Error! Failed to remove previous manager '{managerId}' from task '{taskId}'", taskId, initialTaskManagerId);
-                throw new InvalidOperationException($"Unexpected Error! Failed to remove previous manager from task", ex);
             }
         }
     }

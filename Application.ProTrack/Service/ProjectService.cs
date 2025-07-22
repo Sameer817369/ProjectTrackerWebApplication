@@ -14,33 +14,30 @@ namespace Application.ProTrack.Service
     {
         private readonly IProjectRepoInterface _projectRepo;
         private readonly ILogger<IProjectServiceInterface> _logger;
-        private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IEmailDispatcherServiceInterface _emailDispatcherService;
         private readonly UserManager<AppUser> _userManager;
         private readonly IUserServiceInterface _userService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IProjectHelperService _projectHelperService;
-        private readonly IProjectEmailNotificationHelperInterface _projectEmailNotificationHelper;
+        private readonly IEmailNotificationHelperInterface _emailNotificationHelper;
         public ProjectService(
             IProjectRepoInterface projectRepo,
             ILogger<IProjectServiceInterface> logger,
             UserManager<AppUser> userManager, 
             IUserServiceInterface userService, 
-            IBackgroundJobClient backgroundJobClient,
             IEmailDispatcherServiceInterface emailDispatcherService,
             IUnitOfWork unitOfWork,
             IProjectHelperService projectHelperService,
-            IProjectEmailNotificationHelperInterface projectEmailNotificationHelper)
+            IEmailNotificationHelperInterface emailNotificationHelper)
         {
             _projectRepo = projectRepo;
             _logger = logger;
             _userManager = userManager;
             _userService = userService;
             _emailDispatcherService = emailDispatcherService;
-            _backgroundJobClient = backgroundJobClient;
             _unitOfWork = unitOfWork;
             _projectHelperService = projectHelperService;
-            _projectEmailNotificationHelper = projectEmailNotificationHelper;
+            _emailNotificationHelper = emailNotificationHelper;
         }
         public async Task<IdentityResult> CreateProjectAsync(CreateProjectDto createProject)
         {
@@ -90,7 +87,7 @@ namespace Application.ProTrack.Service
                 {
                     await _userService.AssignRoleToEmployee(manager, allMembers);
                     //enqueing email jobs
-                    _projectEmailNotificationHelper.QueueProjectCreationEmails(manager, nonManagerMembers, createProject.Title);
+                    _emailNotificationHelper.QueueProjectTaskCreationEmails(manager, nonManagerMembers, createProject.Title, null,null);
 
                     await _unitOfWork.SaveChangesAsync();
 
@@ -167,7 +164,7 @@ namespace Application.ProTrack.Service
                             existingProject.UpdatedDate = DateTime.UtcNow;
                             //queuing manager changed email notification
                             var membersToSendMail = initialMemberIds.Except(incomingMangerIdSet).Except(memberToRemoveIds).ToHashSet();
-                            _projectEmailNotificationHelper.QueueManagerChangedEmail(membersToSendMail, existingProject.Title, incomingManagerId);
+                            _emailNotificationHelper.QueueManagerChangedEmail(membersToSendMail, existingProject.Title, incomingManagerId, null, null);
                         }
                     }
                 }
@@ -208,7 +205,7 @@ namespace Application.ProTrack.Service
                         var membersToSendEmail = newMembersToAdd.Except(initialManagerIdSet).ToHashSet();
 
                         //Queue newly added memebers mail notification
-                        _projectEmailNotificationHelper.QueueNewlyAddedMembersEmail(membersToSendEmail, incomingManagerId, existingProject.Title);
+                        _emailNotificationHelper.QueueNewlyAddedMembersEmail(membersToSendEmail, incomingManagerId, existingProject.Title, null, null);
                     }
                 }
                 //updating project
@@ -240,9 +237,14 @@ namespace Application.ProTrack.Service
                 
                 if (projectToRemove != null)
                 {
-                    await _projectRepo.DeleteProjectAsync(projectToRemove);
                     //ressigning members as employees
-                    await Task.WhenAll(prjectMembersIds.Select(id => _userService.ReassignToEmployeeRole(id)));
+                    foreach(var membersId in prjectMembersIds)
+                    {
+                        await _userService.ReassignToEmployeeRole(membersId);
+                    }
+
+                    await _projectRepo.DeleteProjectAsync(projectToRemove);
+                    await _unitOfWork.SaveChangesAsync();
                     return IdentityResult.Success;
                 }
                 return IdentityResult.Failed(new IdentityError

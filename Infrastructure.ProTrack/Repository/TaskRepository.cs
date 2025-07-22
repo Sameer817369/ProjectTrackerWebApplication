@@ -22,7 +22,6 @@ namespace Infrastructure.ProTrack.Repository
             {
                 await _context.AddAsync(taskModel);
                 await _context.AddRangeAsync(projectUserTasks);
-                await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
@@ -33,19 +32,16 @@ namespace Infrastructure.ProTrack.Repository
         public async Task<bool> CreateTaskHistoryForMembers(List<TaskHistory> taskHistoryModel)
         {
             await _context.AddRangeAsync(taskHistoryModel);
-            await _context.SaveChangesAsync();
             return true;
         }
         public async Task<bool> CreateTaskHistoryForManagers(TaskHistory taskHistoryModel)
         {
             await _context.AddRangeAsync(taskHistoryModel);
-            await _context.SaveChangesAsync();
             return true;
         }
         public async Task<bool> DeleteTaskAsync(Tasks taskToDelete, Guid taskId)
         {
             _context.Tasks.Remove(taskToDelete);
-            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -60,13 +56,11 @@ namespace Infrastructure.ProTrack.Repository
         public async Task<bool> DeleteMemberFromTask(List<ProjectUserTask> toRemove)
         {
             _context.ProjectUsersTask.RemoveRange(toRemove);
-            await _context.SaveChangesAsync();
             return true;
         }
         public async Task<bool> DeleteManagerFromTask(ProjectUserTask toRemove)
         {
             _context.ProjectUsersTask.Remove(toRemove);
-            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -84,7 +78,6 @@ namespace Infrastructure.ProTrack.Repository
         }
         public async Task<bool> UpdateTaskAsync(Tasks? taskModel, List<ProjectUserTask>? projectUserTasks)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 if (taskModel != null)
@@ -95,13 +88,10 @@ namespace Infrastructure.ProTrack.Repository
                 {
                     await _context.AddRangeAsync(projectUserTasks);
                 }
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 return true;
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 throw new InvalidOperationException($"Unexpected Error! Cannot Update Task {ex.Message}");
             }
         }
@@ -110,7 +100,6 @@ namespace Infrastructure.ProTrack.Repository
             try
             {
                 _context.Tasks.Remove(taskToDelete);
-                await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)

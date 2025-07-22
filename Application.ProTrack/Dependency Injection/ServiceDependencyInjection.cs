@@ -16,12 +16,13 @@ namespace Application.ProTrack.Dependency_Injection
             services.AddTransient<ICustomeEmailServiceInterface, CustomeEmailService>();
             services.AddTransient<IEmailServiceInterface, EmailSenderService>();
             services.AddScoped<IEmailDispatcherServiceInterface, EmailDispatcherService>();
-            services.AddScoped<IProjectEmailNotificationHelperInterface, ProjectEmailNotificationHelperService>();
+            services.AddScoped<IEmailNotificationHelperInterface, EmailNotificationHelperService>();
             //project service
             services.AddScoped<IProjectServiceInterface, ProjectService>();
             services.AddScoped<IProjectHelperService, ProjectHelperService>();
             //task service
             services.AddScoped<ITaskServiceInterface, TaskService>();
+            services.AddScoped<ITaskHelperServiceInterface, TaskHelperService>();
             //comment service
             services.AddScoped<ICommentServiceInterface, CommentService>();
             services.AddHttpContextAccessor();

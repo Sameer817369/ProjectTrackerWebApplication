@@ -69,13 +69,15 @@ namespace Application.ProTrack.Service
                 throw new InvalidOperationException($"Unexpected error! when sending conformation email to user {user.UserName}", ex);
             }
         }
-        public async Task<IdentityResult> SendProjectMembersAssignedEmailsAsync(HashSet<string> memberIds, string managerId, string projectTitle)
+        public async Task<IdentityResult> SendMembersAssignedEmailsAsync(HashSet<string> memberIds, string projectManagerId, string projectTitle, string? taskTitle, string? taskManagerId )
         {
             try
             {
-                var manager = await _userManager.FindByIdAsync(managerId);
-                if (manager == null)
+                var projectManager = await _userManager.FindByIdAsync(projectManagerId);
+                var taskManager = await _userManager.FindByIdAsync(taskManagerId);
+                if (projectManager == null)
                     return IdentityResult.Failed(new IdentityError { Code = "ManagerNotFound", Description = "Manager not found" });
+
                 // Prepare and send emails to members
                 var emailTasks = memberIds.Select(async memberId =>
                 {
@@ -83,14 +85,22 @@ namespace Application.ProTrack.Service
                     if (member == null)
                         throw new InvalidOperationException($"Member {memberId} not found.");
 
-                    var body = $@"
-                                  <p>You have been added to the <strong>{projectTitle}</strong> project under manager <strong>{manager.UserName}</strong>.</p>
-                                  <p>Please visit your dashboard for details.</p>
-                    ";
+                    var body = taskManagerId == null ? $@"
+                                                        <p>You have been added to the <strong>{projectTitle}</strong> project under manager <strong>{projectManager.UserName}</strong>.</p>
+                                                        <p>Please visit your dashboard for details.</p>"
+                                                     :
+                                                     $@"
+                                                        <p>You have been added to the <strong>{taskTitle}</strong> task in the project{projectTitle} under task manager <strong>{taskManager.UserName}</strong>.</p>
+                                                        <p>Please visit your dashboard for details.</p>";
 
+
+
+                    var subject = taskManager == null ? $"Assigned to project {projectTitle}"
+                                        : $"Assigned to task {taskTitle}";
+                                                        
                     var emailMessage = EmailTempletHelper.WrapInStandardTemplate(member.UserName, body);
 
-                    var result = await _emailSender.CreateEmailAsync(member.Email, $"Assigned to project {projectTitle}", emailMessage);
+                    var result = await _emailSender.CreateEmailAsync(member.Email, subject, emailMessage);
                     if (!result.Succeeded)
                         throw new InvalidOperationException($"Email not sent to member {member.UserName}.");
                 });
@@ -104,29 +114,44 @@ namespace Application.ProTrack.Service
                 throw new InvalidOperationException("Unexpected error while sending project assignment emails", ex);
             }
         }
-        public async Task<IdentityResult> SendProjectManagerAssignedEmailsAsync(string managerId, string projectTitle)
+        public async Task<IdentityResult> SendManagerAssignedEmailsAsync(string projectManagerId, string projectTitle, string? taskManagerId, string? taskTitle)
         {
             try
             {
-                var manager = await _userManager.FindByIdAsync(managerId);
-                if (manager == null)
+                var projectManager = await _userManager.FindByIdAsync(projectManagerId);
+                var taskManager = await _userManager.FindByIdAsync(taskManagerId);
+                if (projectManager == null)
                     return IdentityResult.Failed(new IdentityError { Code = "ManagerNotFound", Description = "Manager not found" });
 
                 // Send email to manager
-                var body = $@"
-                              <p>You have been added to the <strong>{projectTitle} project</strong> as the <strong>project manager</strong>.</p>
-                              <p>Please visit your dashboard for details.</p>
-                    ";
 
-                var emailMessage = EmailTempletHelper.WrapInStandardTemplate(manager.UserName, body);
+                var body = taskManagerId == null ? $@"
+                                                     <p>You have been added to the <strong>{projectTitle} project</strong> as the <strong>project manager</strong>.</p>
+                                                     <p>Please visit your dashboard for details.</p>"
+                                                 :
+                                                 $@"
+                                                    <p>You have been added to the <strong>{taskTitle}</strong> task in the project {projectTitle} as the <strong>task manager</strong>.</p>
+                                                    <p>Please visit your dashboard for details.</p>";
 
-                var managerEmailResult = await _emailSender.CreateEmailAsync(manager.Email, $"Assigned to project {projectTitle}", emailMessage);
+                var subject = taskManager == null ? $"Assigned to project {projectTitle}"
+                                        : $"Assigned to task {taskTitle}";
+
+
+                var name = taskManager == null ? projectManager.UserName
+                                                : taskManager.UserName;
+
+                var emailMessage = EmailTempletHelper.WrapInStandardTemplate(name, body);
+
+                var email = taskManager == null ? projectManager.Email
+                                                : taskManager.Email;
+
+                var managerEmailResult = await _emailSender.CreateEmailAsync(email, subject, emailMessage);
                 if (!managerEmailResult.Succeeded)
                 {
                     return IdentityResult.Failed(new IdentityError
                     {
                         Code = "ManagerEmailFailed",
-                        Description = $"Email not sent to the manager {manager.UserName}"
+                        Description = $"Email not sent to the manager {projectManager.UserName}"
                     });
                 }
                 return IdentityResult.Success;
@@ -138,46 +163,75 @@ namespace Application.ProTrack.Service
             }
         }
 
-        public async Task<IdentityResult> SendRemovedManagerFromProjectEmailsAsync(string managerId, string projectTitle)
+        public async Task<IdentityResult> SendRemovedManagerEmailsAsync(string projectManagerId, string projectTitle, string? taskManagerId, string? taskTitle,bool? isPreviousTaskManagerPresentInNewMembers)
         {
             try
             {
-                var manager = await _userManager.FindByIdAsync(managerId);
-                var managerRole = await _userManager.GetRolesAsync(manager);
-                if (manager == null)
+                var body = "";
+                var projectManager = await _userManager.FindByIdAsync(projectManagerId);
+                if (projectManager == null)
+                    return IdentityResult.Failed(new IdentityError { Code = "ManagerNotFound", Description = "Manager not found" });
+                var taskManager = await _userManager.FindByIdAsync(taskManagerId);
+
+                var projectManagerRole = await _userManager.GetRolesAsync(projectManager);
+
+                if (projectManager == null)
                     return IdentityResult.Failed(new IdentityError { Code = "ManagerNotFound", Description = "Manager not found" });
 
                 // Send email to manager
-                var body = managerRole.Contains("Employee")
-                                        ? $@"<p>You have been removed from the <strong>{projectTitle} project</strong>.</p>
+                if(taskManager == null)
+                {
+                    body = projectManagerRole.Contains("Employee")
+                           ? $@"<p>You have been removed from the <strong>{projectTitle} project</strong>.</p>
                                                 <p>Please visit your dashboard for details.</p>"
 
-                                        : $@"<p>You have been demoted to <strong>member</strong> in the project <strong>{projectTitle}</strong>.</p>
+                           : $@"<p>You have been demoted to <strong>member</strong> in the project <strong>{projectTitle}</strong>.</p>
                                                 <p>Please visit your dashboard for details.</p>";
+                }
+                else
+                {
+                    body = isPreviousTaskManagerPresentInNewMembers == false
+                            ? $@"<p>You have been removed from the <strong>{taskTitle} task in the project {projectTitle} by the project manager {projectManager.UserName}</strong>.</p>
+                                                                    <p>Please visit your dashboard for details.</p>"
 
-                var emailMessage = EmailTempletHelper.WrapInStandardTemplate(manager.UserName, body);
+                            : $@"<p>You have been demoted to <strong>member</strong> in the task <strong>{taskTitle} of project {projectTitle} </strong>  by the project manager <strong> {projectManager.UserName} </strong>.</p>
+                                                                    <p>Please visit your dashboard for details.</p>";
+                }
+  
 
-                var managerEmailResult = await _emailSender.CreateEmailAsync(manager.Email, $"Manager Updated in the project {projectTitle}", emailMessage);
+                var subject = taskManager == null ? $"Manager Updated in the project {projectTitle}"
+                        : $"Manager Updated in the task {taskTitle}";
+
+                var email = taskManager == null ? projectManager.Email
+                                                : taskManager.Email;
+
+                var name = taskManager == null ? projectManager.UserName
+                                               : taskManager.UserName;
+
+                var emailMessage = EmailTempletHelper.WrapInStandardTemplate(name, body);
+
+                var managerEmailResult = await _emailSender.CreateEmailAsync(email, subject, emailMessage);
                 if (!managerEmailResult.Succeeded)
                 {
                     return IdentityResult.Failed(new IdentityError
                     {
                         Code = "ManagerEmailFailed",
-                        Description = $"Email not sent to the manager {manager.UserName}"
+                        Description = $"Email not sent to the manager {projectManager.UserName} or {taskManager.UserName}"
                     });
                 }
                 return IdentityResult.Success;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while sending removed from project emails for project {projectTitle} to the project manager", projectTitle);
+                _logger.LogError(ex, "Error while sending removed from project emails for project {projectTitle} to the project manager or taskManager of the task {taskTitle}", projectTitle, taskTitle);
                 throw new InvalidOperationException("Unexpected error while sending removed from project emails", ex);
             }
         }
-        public async Task<IdentityResult> SendRemovedMemberEmailsAsync(HashSet<string> memberIds, string projectTitle)
+        public async Task<IdentityResult> SendRemovedMemberEmailsAsync(HashSet<string> memberIds, string projectTitle, string? taskTitle)
         {
             try
             {
+                var body = "";
                 // Prepare and send emails to members
                 foreach(var memberId in memberIds)
                 {
@@ -185,15 +239,31 @@ namespace Application.ProTrack.Service
                     if (member == null)
                         throw new InvalidOperationException($"Member {memberId} not found.");
                     var memberRole = await _userManager.GetRolesAsync(member);
-                    var body = memberRole.Contains("Project Manager")
-                        ? $@"<p>You have been promoted to <strong>project manager</strong> for the project <strong>{projectTitle}</strong>.</p>
-                                <p>Please visit your dashboard for details.</p>"
+                    if(taskTitle == null)
+                    {
+                         body = memberRole.Contains("Project Manager")
+                                   ? $@"<p>You have been promoted to <strong>project manager</strong> for the project <strong>{projectTitle}</strong>.</p>
+                                    <p>Please visit your dashboard for details.</p>"
 
-                        : $@"<p>You have been removed from the project <strong>{projectTitle}</strong>.</p>
-                                <p>Please visit your dashboard for details.</p>";
+                                   : $@"<p>You have been removed from the project <strong>{projectTitle}</strong>.</p>
+                                    <p>Please visit your dashboard for details.</p>";
+                    }
+                    else
+                    {
+                        body = memberRole.Contains("Task Manager")
+                                  ? $@"<p>You have been promoted to <strong>task manager</strong> for the task <strong>{taskTitle}</strong> in the project <strong>{projectTitle}</strong>.</p>
+                                                    <p>Please visit your dashboard for details.</p>"
+
+                                  : $@"<p>You have been removed from the task<strong> {taskTitle}</strong> of the project <strong>{projectTitle}</strong>.</p>
+                                                    <p>Please visit your dashboard for details.</p>";
+                    }
+
+                    var subject = taskTitle == null ? $"Member Role Updated in the project {projectTitle}"
+                                                    : $"Member Role Updated in the task {taskTitle}";
+
                     var htmlMessage = EmailTempletHelper.WrapInStandardTemplate(member.UserName, body);
 
-                    await _emailSender.CreateEmailAsync(member.Email, $"Member Role Updated in the project {projectTitle}", htmlMessage);
+                    await _emailSender.CreateEmailAsync(member.Email, subject, htmlMessage);
                 }
                 return IdentityResult.Success;
             }
@@ -203,22 +273,41 @@ namespace Application.ProTrack.Service
                 throw new InvalidOperationException("Unexpected error while sending removed from project emails", ex);
             }
         }
-        public async Task<IdentityResult> SendManagerChangedEmailAsync(HashSet<string>memberIds, string projectTitle, string managerId)
+        public async Task<IdentityResult> SendManagerChangedEmailAsync(HashSet<string>memberIds, string projectTitle, string? projectManagerId, string? taskTitle, string?taskManagerId)
         {
             try
             {
-                var manager = await _userManager.FindByIdAsync(managerId);
+                var body = "";
+                var projectManager = await _userManager.FindByIdAsync(projectManagerId);
+                if (projectManager == null)
+                    return IdentityResult.Failed(new IdentityError { Code = "ManagerNotFound", Description = "Manager not found" });
+
+                var taskManager = await _userManager.FindByIdAsync(taskManagerId); 
+
                 var emailTask = memberIds.Select(async memberId =>
                 {
                     var member = await _userManager.FindByIdAsync(memberId);
                     if (member == null)
                         throw new KeyNotFoundException("members not found");
-                    var body = $@"
-                                  <p>The current project manager for the project <strong>{projectTitle}</strong> is <strong>{manager.UserName}</strong>.</p>
-                                  <p>Please visit your dashboard for details.</p>
-                    ";
+                    if(taskManagerId == null)
+                    {
+                        body = $@"
+                                  <p>The current project manager for the project <strong>{projectTitle}</strong> is <strong>{projectManager.UserName}</strong>.</p>
+                                  <p>Please visit your dashboard for details.</p>";
+
+                    }
+                    else
+                    {
+                        body = $@"
+                                  <p>The current task manager for the task <strong>{taskTitle}</strong> of the project  <strong>{projectTitle}</strong> is <strong>{taskManager.UserName}</strong>.</p>
+                                  <p>Please visit your dashboard for details.</p>";
+                    }
+                    var subject = taskManagerId == null ? $"Project Manager Changed in the project {projectTitle}"
+                                                        :  $"Task Manager Changed in the task {taskTitle}";
+
                     var emailMessage = EmailTempletHelper.WrapInStandardTemplate(member.UserName, body);
-                    var result = await _emailSender.CreateEmailAsync(member.Email, $"Project Manager Changed in the project {projectTitle}", emailMessage);
+
+                    var result = await _emailSender.CreateEmailAsync(member.Email, subject, emailMessage);
                     if (!result.Succeeded)
                         throw new InvalidOperationException($"Email not sent to member {member.UserName}.");
                 });

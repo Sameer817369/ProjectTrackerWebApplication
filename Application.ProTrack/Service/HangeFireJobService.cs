@@ -29,69 +29,69 @@ namespace Application.ProTrack.Service
             }
         }
 
-        public async Task SendProjectMemberAssignedEmailAsync(HashSet<string> memberIds, string managerId, string title)
+        public async Task SendMemberAssignedEmailAsync(HashSet<string> memberIds, string projectManagerId, string projectTitle, string? taskManagetId, string? taskTitle)
         {
             try
             {
-                await _customEmailService.SendProjectMembersAssignedEmailsAsync(memberIds, managerId, title);
-                _logger.LogInformation("Project Assigned Email successfully send to the members of poject {titel}",title);
+                await _customEmailService.SendMembersAssignedEmailsAsync(memberIds, projectManagerId, projectTitle, taskTitle, taskManagetId);
+                _logger.LogInformation("Project Assigned Email successfully send to the members of poject {titel}",projectTitle);
             }
             catch (Exception ex)
             {
-                _logger.LogError("Project Assigned Email not send to the members of poject {titel}", title);
+                _logger.LogError("Project Assigned Email not send to the members of poject {titel}", projectTitle);
                 throw new InvalidOperationException("Unexpected Error! Failed to send project assignment email to the members", ex);
             }
         }
 
-        public async Task SendProjectManagerAssignedEmailAsync(string managerId, string title)
+        public async Task SendManagerAssignedEmailAsync(string projectManagerId, string projectTitle, string? taskManagerId, string? taskTitle )
         {
             try
             {
-                await _customEmailService.SendProjectManagerAssignedEmailsAsync(managerId, title);
-                _logger.LogInformation("Project Assigned Email successfully send to the manager of poject {titel}", title);
+                await _customEmailService.SendManagerAssignedEmailsAsync(projectManagerId, projectTitle, taskManagerId, taskTitle);
+                _logger.LogInformation("Project Assigned Email successfully send to the manager of poject {titel}", projectTitle);
             }
             catch (Exception ex)
             {
-                _logger.LogError("Project Assigned Email not send to the manager of the {titel} project", title);
+                _logger.LogError("Project Assigned Email not send to the manager of the {titel} project", projectTitle);
                 throw new InvalidOperationException("Unexpected Error! Failed to send project assignment email to the manager", ex);
             }
         }
-        public async Task SendRemovedFromProjectEmailToManagerAsync(string managerId, string title)
+        public async Task SendRemovedEmailToManagerAsync(string projectManagerId, string projectTitle, string? taskManagerId, string? taskTitle, bool? isPreviousTaskManagerPresentInNewMembers)
         {
             try
             {
-                await _customEmailService.SendRemovedManagerFromProjectEmailsAsync(managerId, title);
-                _logger.LogInformation("Manager updated Email successfully send to the previous manager of poject {titel}", title);
+                await _customEmailService.SendRemovedManagerEmailsAsync(projectManagerId, projectTitle, taskManagerId,taskTitle, isPreviousTaskManagerPresentInNewMembers);
+                _logger.LogInformation("Manager updated Email successfully send to the previous manager of poject {titel}", projectTitle);
             }
             catch (Exception ex)
             {
-                _logger.LogError("Manager updated  Email not send to the manager of the poject {titel}", title);
+                _logger.LogError("Manager updated  Email not send to the manager of the poject {titel}", projectTitle);
                 throw new InvalidOperationException("Unexpected Error! Failed to send manager updated email to the updated manager", ex);
             }
         }
-        public async Task SendRemovedFromProjectEmailToMemberAsync(HashSet<string>memberIds, string title)
+        public async Task SendRemovedEmailToMemberAsync(HashSet<string>memberIds, string projectTitle, string? taskTitle)
         {
             try
             {
-                await _customEmailService.SendRemovedMemberEmailsAsync(memberIds, title);
-                _logger.LogInformation("Member removed Email successfully send to the removed members of poject {titel}", title);
+                await _customEmailService.SendRemovedMemberEmailsAsync(memberIds, projectTitle, taskTitle);
+                _logger.LogInformation("Member removed Email successfully send to the removed members of poject {titel}", projectTitle);
             }
             catch (Exception ex)
             {
-                _logger.LogError("Manager updated  Email not send to the members of the poject {titel}", title);
+                _logger.LogError("Manager updated  Email not send to the members of the poject {titel}", projectTitle);
                 throw new InvalidOperationException("Unexpected Error! Failed to send member updated email to the removed members", ex);
             }
         }
-        public async Task SendManagerChangedEmailToMemberAsync(HashSet<string> memberIds, string title, string managerId)
+        public async Task SendManagerChangedEmailToMemberAsync(HashSet<string> memberIds, string projectTitle, string projectManagerId, string? taskManagerId, string? taskTitle)
         {
             try
             {
-                await _customEmailService.SendManagerChangedEmailAsync(memberIds, title, managerId);
-                _logger.LogInformation("Manager changed Email successfully send to the members of poject {titel}", title);
+                await _customEmailService.SendManagerChangedEmailAsync(memberIds, projectTitle, projectManagerId, taskTitle, taskManagerId);
+                _logger.LogInformation("Manager changed Email successfully send to the members of poject {titel}", projectTitle);
             }
             catch (Exception ex)
             {
-                _logger.LogError("Manager changed Email not send to the members of the poject {titel}", title);
+                _logger.LogError("Manager changed Email not send to the members of the poject {titel}", projectTitle);
                 throw new InvalidOperationException("Unexpected Error! Failed to send m anager changed email to the members", ex);
             }
         }
