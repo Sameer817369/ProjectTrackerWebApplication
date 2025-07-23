@@ -255,6 +255,7 @@ namespace Application.ProTrack.Service
                 if (taskToRemove != null)
                 {
                     await _taskRepo.DeleteTaskAsync(taskToRemove);
+                    await _userService.ReassignToMemberRole(taskToRemove.TaskManagerId);
                     await _unitOfWork.SaveChangesAsync();
                     return IdentityResult.Success;
                 }

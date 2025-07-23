@@ -18,13 +18,15 @@ namespace Application.ProTrack.Service
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly UserManager<AppUser> _userManager;
         private readonly IHttpContextAccessor _contextAccessor;
+        private readonly IUnitOfWork _unitOfWork;
         public UserService(
             IUserRepoInterface userRepo,
             ILogger<IUserServiceInterface> logger,
             ICustomeEmailServiceInterface customeEmail,
             UserManager<AppUser> userManager,
             IHttpContextAccessor contextAccessor, 
-            IBackgroundJobClient backgroundJobClient)
+            IBackgroundJobClient backgroundJobClient,
+            IUnitOfWork unitOfWork)
         {
             _userRepo = userRepo;
             _logger = logger;
@@ -32,6 +34,7 @@ namespace Application.ProTrack.Service
             _userManager = userManager;
             _contextAccessor = contextAccessor;
             _backgroundJobClient = backgroundJobClient;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<(IdentityResult,string)> CreateUserAsync(RegisterUserDto registerUser)
@@ -67,19 +70,58 @@ namespace Application.ProTrack.Service
                 throw new ApplicationException($"Failure to register user {ex.Message}");
             }
         }
-        public Task DeleteUserAsync(string userId)
+        public async Task<IdentityResult> DeleteUserAsync(string userId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var userToRemove =await _userRepo.GetUserByIdAsync(userId);
+                if (userToRemove != null)
+                {
+                    await _userRepo.DeleteUserAsync(userToRemove);
+                    await _unitOfWork.SaveChangesAsync();
+                    return IdentityResult.Success;
+                }
+
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Code = "UserNotRemoved",
+                    Description = "Unexpected Error! Failed to remove user"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error! Failed to delete user having id {id}", userId ?? "Unknown");
+                throw new ApplicationException($"Failure to delete user {ex.Message}");
+            }
         }
 
-        public Task GetAllUserAsync()
+        public async Task<List<AppUser>> GetAllUserAsync()
         {
-            throw new NotImplementedException();
+            try
+            {
+                return await _userRepo.GetAllUserAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected Error! Failed to fetch all the users");
+                throw new ApplicationException($"Failure to fetch all the users {ex.Message}");
+            }
         }
 
-        public Task GetUserByIdAsync(string userId)
+        public async Task<AppUser> GetUserByIdAsync(string userId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var result = await _userRepo.GetUserByIdAsync(userId)
+                    ?? throw new KeyNotFoundException("User not found"); ;
+                return result;
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected Error! Failed to fetch the users with id {id}", userId ??"unknown");
+                throw new ApplicationException($"Failure to fetch the users {ex.Message}");
+            }
         }
         public Task UpdateUserAsync(string userId, UpdateUserDto updateUser)
         {
@@ -126,17 +168,37 @@ namespace Application.ProTrack.Service
                 var users = await _userManager.FindByIdAsync(assignedUserId)
                   ?? throw new KeyNotFoundException("Members not found");
                 var existingRole = await _userManager.GetRolesAsync(users);
-                if (existingRole.Any())
+                if (!existingRole.Contains("Employee"))
                 {
                     await _userManager.RemoveFromRolesAsync(users, existingRole);
+                    await _userManager.AddToRoleAsync(users, "Employee");
                 }
-                await _userManager.AddToRoleAsync(users, "Employee");
                 return true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Unexpected Error! Failed to reassign role back to employee for userId: '{assignedUserId}'");
                 throw new InvalidOperationException($"Unexpected Error! Failed to reassign role to employees {ex.Message}");
+            }
+        }
+        public async Task<bool> ReassignToMemberRole(string assignedUserId)
+        {
+            try
+            {
+                var users = await _userManager.FindByIdAsync(assignedUserId)
+                  ?? throw new KeyNotFoundException("Members not found");
+                var existingRole = await _userManager.GetRolesAsync(users);
+                if (existingRole.Contains("Task Manager"))
+                {
+                    await _userManager.RemoveFromRolesAsync(users, existingRole);
+                    await _userManager.AddToRoleAsync(users, "Member");
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Unexpected Error! Failed to reassign role back to member for userId: '{assignedUserId}'");
+                throw new InvalidOperationException($"Unexpected Error! Failed to reassign role to member {ex.Message}");
             }
         }
         public async Task<AppUser> GetCurrentUser()

@@ -4,14 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ProTrack.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/users")]
     [ApiController]
     public class UserController : ControllerBase
     {
         private readonly IUserServiceInterface _userService;
         private readonly IAuthServiceInterface _authService;
         private readonly ICustomeEmailServiceInterface _customeEmail;
-        public UserController( IUserServiceInterface userService, IAuthServiceInterface authService, ICustomeEmailServiceInterface customeEmail)
+        public UserController(IUserServiceInterface userService, IAuthServiceInterface authService, ICustomeEmailServiceInterface customeEmail)
         {
             _userService = userService;
             _authService = authService;
@@ -26,17 +26,17 @@ namespace ProTrack.Controllers
                 if (!result.Item1.Succeeded)
                 {
                     var errors = result.Item1.Errors.Select(e => e.Description).ToList();
-                    return BadRequest(new {Message = "User registration failed", Error = errors});
+                    return BadRequest(new { Message = "User registration failed", Error = errors });
                 }
-                return Ok(new {Message = "User registered successfully", User = registerUser, ConfirmationToken = result.Item2});
+                return Ok(new { Message = "User registered successfully", User = registerUser, ConfirmationToken = result.Item2 });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                return StatusCode(500, new {Message="Internal Server Error! failed to register user", Error = ex.Message });
+                return StatusCode(500, new { Message = "Internal Server Error! failed to register user", Error = ex.Message });
             }
         }
         [HttpPost("confirm-email")]
-        public async Task<IActionResult> ConfirmEmailAsync([FromQuery]string userId, [FromQuery]string token)
+        public async Task<IActionResult> ConfirmEmailAsync([FromQuery] string userId, [FromQuery] string token)
         {
             try
             {
@@ -47,7 +47,7 @@ namespace ProTrack.Controllers
                 }
                 return BadRequest(new { Message = "Confirmation Error", Error = "Failed to confirm email" });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return StatusCode(500, new { Message = "Internal Server Error! Failed to confirm email", Error = ex.Message });
             }
@@ -75,13 +75,59 @@ namespace ProTrack.Controllers
             try
             {
                 var result = await _authService.LoginUserAsync(loginUserDto);
-                return Ok(new {Message = "User loggedin Successfully", Token = result });
+                return Ok(new { Message = "User loggedin Successfully", Token = result });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return StatusCode(500, new { Message = "Internal Server Error Login Failed", Error = ex.Message });
             }
         }
-
+        [HttpGet("get-all-users")]
+        public async Task<IActionResult> GetAllUsersAsync()
+        {
+            try
+            {
+                var result = await _userService.GetAllUserAsync();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Internal Server Error! Failed to Fetch All The Users", Error = ex.Message });
+            }
+        }
+        [HttpGet("{userId}")]
+        public async Task<IActionResult> GetUsersByIdAsync([FromRoute] string userId)
+        {
+            try
+            {
+                var result = await _userService.GetUserByIdAsync(userId);
+                return Ok(new
+                {
+                    Message = "User Successfully Fetched",
+                    User = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = $"Internal Server Error! Failed to Fetch The User with id {userId}", Error = ex.Message });
+            }
+        }
+        [HttpDelete("{userId}")]
+        public async Task<IActionResult> DeleteUserAsync([FromRoute] string userId)
+        {
+            try
+            {
+                var result = await _userService.DeleteUserAsync(userId);
+                return Ok(new
+                {
+                    User = userId,
+                    Message = "User Successfully Removed"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = $"Internal Server Error! Failed to Remove The User with id {userId}", Error = ex.Message });
+            }
+        }
     }
 }

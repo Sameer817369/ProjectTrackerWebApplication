@@ -6,9 +6,8 @@ namespace Domain.ProTrack.RepoInterface
     public interface ICommentRepoInterface
     {
         Task<IdentityResult> CreateCmt(Comment cmtModel);
-        Task<IdentityResult> UpdateCmt();
-        Task<IdentityResult> DeleteCmt(Guid cmtId);
+        Task<IdentityResult> UpdateCmt(Comment commentToUpdate);
         Task<(string AssignedUserId, Guid Id)> GetCurrentProjectUser(Guid taskId, string userId);
-        Task<Comment> GetCommentToUpdateDetails(Guid cmtId);
+        Task<Comment> GetCommentDetails(Guid cmtId);
     }
 }

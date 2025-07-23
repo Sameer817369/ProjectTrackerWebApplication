@@ -12,18 +12,26 @@ namespace Application.ProTrack.Service
         private readonly ICommentRepoInterface _commentRepo;
         private readonly ILogger<ICommentRepoInterface> _logger;
         private readonly IUserServiceInterface _userService;
-        public CommentService(ICommentRepoInterface commentRepo, ILogger<ICommentRepoInterface> logger, IUserServiceInterface userService)
+        private readonly IUnitOfWork _unitOfWork;
+        public CommentService(ICommentRepoInterface commentRepo, ILogger<ICommentRepoInterface> logger, IUserServiceInterface userService, IUnitOfWork unitOfWork)
         {
             _commentRepo = commentRepo;
             _logger = logger;
             _userService = userService;
+            _unitOfWork = unitOfWork;
         }
         public async Task<IdentityResult> CreateCmtAsync(CreateCommentDto createCommentDto, Guid taskId)
         {
             try
             {
                 var currentUser = await _userService.GetCurrentUser();
-                var projectUserTask = await _commentRepo.GetCurrentProjectUser(taskId, currentUser.Id);
+                var projectUserTask = await _commentRepo.GetCurrentProjectUser(taskId, currentUser.Id); 
+
+                if(projectUserTask.Equals(Guid.Empty))
+                {
+                    throw new KeyNotFoundException("ProjectUser not found");
+                }
+
                 if (projectUserTask.AssignedUserId == currentUser.Id)
                 {
                     var cleanDescription = CleanLanguageFilter.CleanText(createCommentDto.Description);
@@ -59,16 +67,19 @@ namespace Application.ProTrack.Service
         {
             try
             {
-                var result = await _commentRepo.DeleteCmt(cmtId);
-                if (result.Succeeded)
+                var cmtToDelete = await _commentRepo.GetCommentDetails(cmtId);
+                if(cmtToDelete == null)
                 {
-                    return IdentityResult.Success;
+                    throw new KeyNotFoundException("Comment not found");
                 }
-                return IdentityResult.Failed(new IdentityError
-                {
-                    Code = "CommentNotDeleted",
-                    Description = "Unexpected Error! Failed to delete comment"
-                });
+                cmtToDelete.IsDeleted = true;
+                cmtToDelete.UpdatedTime = DateTime.UtcNow;
+                
+                await _commentRepo.UpdateCmt(cmtToDelete);
+
+                await _unitOfWork.SaveChangesAsync();
+
+                return IdentityResult.Success;
             }
             catch (Exception ex)
             {
@@ -81,24 +92,29 @@ namespace Application.ProTrack.Service
         {
             try
             {
+                if(updateCommentDto == null)
+                {
+                    throw new InvalidOperationException("Invalid Request! null data founded");
+                }
+
                 var currentUser = await _userService.GetCurrentUser();
+
                 var projectUserTask = await _commentRepo.GetCurrentProjectUser(taskId,currentUser.Id);
+
+                if (projectUserTask.Equals(Guid.Empty))
+                {
+                    throw new KeyNotFoundException("ProjectUser not found");
+                }
+
                 if (projectUserTask.AssignedUserId == currentUser.Id)
                 {
-                    var commentToUpdate = await _commentRepo.GetCommentToUpdateDetails(cmtId);
+                    var commentToUpdate = await _commentRepo.GetCommentDetails(cmtId);
                     if (commentToUpdate == null) throw new InvalidOperationException("Unexpected Error! Comment not found");
                     commentToUpdate.UpdatedTime = DateTime.UtcNow;
                     commentToUpdate.Description = updateCommentDto.Description;
-                    var result = await _commentRepo.UpdateCmt();
-                    if (result.Succeeded)
-                    {
-                        return IdentityResult.Success;
-                    }
-                    return IdentityResult.Failed(new IdentityError
-                    {
-                        Code = "CommentNotUpdated",
-                        Description = "Unexpected Error! Failed to update Comment"
-                    });
+                    await _commentRepo.UpdateCmt(commentToUpdate);
+                    await _unitOfWork.SaveChangesAsync();
+                    return IdentityResult.Success;
                 }
                 return IdentityResult.Failed(new IdentityError
                 {

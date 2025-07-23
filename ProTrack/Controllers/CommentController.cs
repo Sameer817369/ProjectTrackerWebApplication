@@ -59,5 +59,28 @@ namespace ProTrack.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
+
+        [HttpDelete("delete/{cmtId}")]
+        public async Task<IActionResult> DeleteCommentAsync([FromRoute] Guid cmtId)
+        {
+            try
+            {
+                var result = await _commentService.DeleteCmtAsync(cmtId);
+
+                if (result.Succeeded)
+                {
+                    return Ok("Comment successfully removed");
+                }
+                return BadRequest(new
+                {
+                    Message = "CommentNotRemoved",
+                    Error = result.Errors.Select(e => e.Description).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
     }
 }

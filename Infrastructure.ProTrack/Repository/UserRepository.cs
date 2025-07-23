@@ -1,5 +1,6 @@
 ﻿using Domain.ProTrack.Models;
 using Domain.ProTrack.RepoInterface;
+using Infrastructure.ProTrack.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,13 @@ namespace Infrastructure.ProTrack.Repository
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly IHttpContextAccessor _contextAccessor;
+        private readonly ApplicationDbContext _context;
 
-        public UserRepository(UserManager<AppUser> userManager, IHttpContextAccessor contextAccessor)
+        public UserRepository(UserManager<AppUser> userManager, IHttpContextAccessor contextAccessor, ApplicationDbContext context)
         {
             _userManager = userManager;
             _contextAccessor = contextAccessor;
+            _context = context;
         }
         public async Task<IdentityResult> CreateUserAsync(AppUser userModel, string password)
         {
@@ -34,20 +37,19 @@ namespace Infrastructure.ProTrack.Repository
                 throw new ApplicationException($"Usexpected error while registering user {ex.Message}");
             }
         }
-        public Task DeleteUserAsync(string userId)
+        public async Task DeleteUserAsync(AppUser user)
         {
-            throw new NotImplementedException();
+            _context.Users.Remove(user);
         }
 
-        public Task GetAllUserAsync()
+        public async Task<List<AppUser>> GetAllUserAsync()
         {
-            throw new NotImplementedException();
+            return await _context.Users.ToListAsync();
         }
 
         public Task<AppUser?> GetUserByIdAsync(string userId)
         {
             var user = _userManager.FindByIdAsync(userId);
-            if (string.IsNullOrEmpty(userId)) throw new UnauthorizedAccessException("User not found");
             return user;
         }
 
