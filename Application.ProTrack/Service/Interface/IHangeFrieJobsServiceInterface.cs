@@ -10,5 +10,11 @@ namespace Application.ProTrack.Service.Interface
         Task SendRemovedEmailToManagerAsync(string projectManagerId, string projectTitle, string? taskManagerId, string? taskTitle, bool? isPreviousTaskManagerPresentInNewMembers);
         Task SendRemovedEmailToMemberAsync(HashSet<string> memberIds, string projectTitle, string? taskTitle);
         Task SendManagerChangedEmailToMemberAsync(HashSet<string> memberIds, string projectTitle, string projectManagerId, string? taskManagerId, string? taskTitle);
+
+        Task SendManagerAssignedNotificationAsync(HashSet<string> projectManagerId, string projectTitle, string? taskManagerId, string? taskTitle);
+        Task SendMembersAssignedNotificationAsync(HashSet<string> membersIds, string projectManagerId, string projectTitle, string? taskManagerId, string? taskTitle);
+        Task SendManagerChangedNotificationToMemberAsync(HashSet<string> memberIds, string projectTitle, string projectManagerId, string? taskManagerId, string? taskTitle);
+        Task SendRemovedNotificationToManagerAsync(HashSet<string> projectManagerId, string projectTitle, string? taskManagerId, string? taskTitle, bool? isPreviousTaskManagerPresentInNewMembers);
+        Task SendRemovedNotificationToMemberAsync(HashSet<string> memberIds, string projectTitle, string? taskTitle);
     }
 }

@@ -41,6 +41,7 @@ namespace Application.ProTrack.Service
                         Description = cleanDescription,
                     };
                     var result = await _commentRepo.CreateCmt(cmtModel);
+                    await _unitOfWork.SaveChangesAsync();
                     if (result.Succeeded)
                     {
                         return IdentityResult.Success;
@@ -125,6 +126,42 @@ namespace Application.ProTrack.Service
             catch(Exception ex)
             {
                 throw new ApplicationException("Internal Server Error! Failed to update comment", ex);
+            }
+        }
+        public async Task<List<ReadCommentDto>> GetAllCommentsAsync()
+        {
+            try
+            {
+                var comments = await _commentRepo.GetAllComments();
+                return comments.Select(c => new ReadCommentDto
+                {
+                    CommentTime = c.CommentedTime,
+                    Description = c.Description,
+                    CommentUser = c.CommentedProjectUserTask.ProjectUser.AssignedUser.UserName,
+                    TaskTitle = c.CommentedProjectUserTask.Task.Title
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("Internal Server Error! Failed to fetch all the comment", ex);
+            }
+        }
+        public async Task<List<ReadCommentDto>> GetAllTaskSpecifiedCommentsAsync(Guid taskId)
+        {
+            try
+            {
+                var comments = await _commentRepo.GetAllTaskSpecifiedComments(taskId);
+                return comments.Select(c => new ReadCommentDto
+                {
+                    CommentTime = c.CommentedTime,
+                    Description = c.Description,
+                    CommentUser = c.CommentedProjectUserTask.ProjectUser.AssignedUser.UserName,
+                    TaskTitle = c.CommentedProjectUserTask.Task.Title
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("Internal Server Error! Failed to fetch all the task specified comments", ex);
             }
         }
     }

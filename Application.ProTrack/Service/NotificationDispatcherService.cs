@@ -2,7 +2,7 @@
 
 namespace Application.ProTrack.Service
 {
-    public class EmailDispatcherService : IEmailDispatcherServiceInterface
+    public class NotificationDispatcherService : INotificationDispatcherServiceInterface
     {
         private readonly List<Func<Task>> _emailQueue = new();
         public async Task DispatchAsync()

@@ -1,6 +1,6 @@
 ﻿namespace Application.ProTrack.Service.Interface
 {
-    public interface IEmailNotificationHelperInterface
+    public interface INotificationHelperInterface
     {
         void QueueProjectTaskCreationEmails(string projectManagerId, HashSet<string> members, string projectTitle, string? taskManagerId, string? taskTitle);
         void QueueManagerChangedEmail(HashSet<string> memebers, string projectTitle, string newProjectManagerId, string? newTaskManagerId, string? taskTitle);

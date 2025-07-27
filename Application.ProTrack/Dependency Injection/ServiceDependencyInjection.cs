@@ -15,8 +15,8 @@ namespace Application.ProTrack.Dependency_Injection
             //email triggering services
             services.AddTransient<ICustomeEmailServiceInterface, CustomeEmailService>();
             services.AddTransient<IEmailServiceInterface, EmailSenderService>();
-            services.AddScoped<IEmailDispatcherServiceInterface, EmailDispatcherService>();
-            services.AddScoped<IEmailNotificationHelperInterface, EmailNotificationHelperService>();
+            services.AddScoped<INotificationDispatcherServiceInterface, NotificationDispatcherService>();
+            services.AddScoped<INotificationHelperInterface, NotificationHelperService>();
             //project service
             services.AddScoped<IProjectServiceInterface, ProjectService>();
             services.AddScoped<IProjectHelperService, ProjectHelperService>();
@@ -27,6 +27,7 @@ namespace Application.ProTrack.Dependency_Injection
             services.AddScoped<ICommentServiceInterface, CommentService>();
             services.AddHttpContextAccessor();
             services.AddScoped<IHangeFrieJobsServiceInterface, HangeFireJobService>();
+
             return services;
         }
     }

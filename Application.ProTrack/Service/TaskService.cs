@@ -19,8 +19,8 @@ namespace Application.ProTrack.Service
         private readonly IUserServiceInterface _userService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITaskHelperServiceInterface _taskHelperService;
-        private readonly IEmailNotificationHelperInterface _emailNotificationHelper;
-        private readonly IEmailDispatcherServiceInterface _emailDispatcherService;
+        private readonly INotificationHelperInterface _emailNotificationHelper;
+        private readonly INotificationDispatcherServiceInterface _emailDispatcherService;
         public TaskService(ITaskRepositoryInterface taskRepo,
             ILogger<ITaskServiceInterface> logger, 
             IUserRepoInterface userRepo,
@@ -29,8 +29,8 @@ namespace Application.ProTrack.Service
             IUserServiceInterface userService,
             IUnitOfWork unitOfWork,
             ITaskHelperServiceInterface taskHelperService,
-            IEmailNotificationHelperInterface emailNotificationHelper,
-            IEmailDispatcherServiceInterface emailDispatcherService)
+            INotificationHelperInterface emailNotificationHelper,
+            INotificationDispatcherServiceInterface emailDispatcherService)
         {
             _taskRepo = taskRepo;
             _logger = logger;

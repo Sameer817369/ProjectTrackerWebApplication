@@ -15,12 +15,12 @@ namespace Application.ProTrack.Service
         private readonly UserManager<AppUser> _userManager;
         private readonly ITaskRepositoryInterface _taskRepo;
         private readonly ILogger<ITaskHelperServiceInterface> _logger;
-        private readonly IEmailNotificationHelperInterface _emailNotificationHelper;
+        private readonly INotificationHelperInterface _emailNotificationHelper;
         public TaskHelperService(IProjectRepoInterface projectRepo,
             UserManager<AppUser> userManager, 
             ITaskRepositoryInterface taskRepo,
             ILogger<ITaskHelperServiceInterface> logger,
-            IEmailNotificationHelperInterface emailNotificationHelper)
+            INotificationHelperInterface emailNotificationHelper)
         {
             _projectRepo = projectRepo;
             _userManager = userManager;

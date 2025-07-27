@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Application.ProTrack.Service.Interface
 {
-    public interface IEmailDispatcherServiceInterface
+    public interface INotificationDispatcherServiceInterface
     {
         void Queue(Func<Task> emailJobs);
         Task DispatchAsync();

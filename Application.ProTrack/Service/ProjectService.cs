@@ -14,30 +14,31 @@ namespace Application.ProTrack.Service
     {
         private readonly IProjectRepoInterface _projectRepo;
         private readonly ILogger<IProjectServiceInterface> _logger;
-        private readonly IEmailDispatcherServiceInterface _emailDispatcherService;
+        private readonly INotificationDispatcherServiceInterface _notificationDispatcherService;
         private readonly UserManager<AppUser> _userManager;
         private readonly IUserServiceInterface _userService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IProjectHelperService _projectHelperService;
-        private readonly IEmailNotificationHelperInterface _emailNotificationHelper;
+        private readonly INotificationHelperInterface _notificationHelper;
         public ProjectService(
             IProjectRepoInterface projectRepo,
             ILogger<IProjectServiceInterface> logger,
             UserManager<AppUser> userManager, 
             IUserServiceInterface userService, 
-            IEmailDispatcherServiceInterface emailDispatcherService,
+            INotificationDispatcherServiceInterface notificationDispatcherService,
             IUnitOfWork unitOfWork,
             IProjectHelperService projectHelperService,
-            IEmailNotificationHelperInterface emailNotificationHelper)
+            INotificationHelperInterface emailNotificationHelper
+            )
         {
             _projectRepo = projectRepo;
             _logger = logger;
             _userManager = userManager;
             _userService = userService;
-            _emailDispatcherService = emailDispatcherService;
+            _notificationDispatcherService = notificationDispatcherService;
             _unitOfWork = unitOfWork;
             _projectHelperService = projectHelperService;
-            _emailNotificationHelper = emailNotificationHelper;
+            _notificationHelper = emailNotificationHelper;
         }
         public async Task<IdentityResult> CreateProjectAsync(CreateProjectDto createProject)
         {
@@ -87,13 +88,14 @@ namespace Application.ProTrack.Service
                 {
                     await _userService.AssignRoleToEmployee(manager, allMembers);
                     //enqueing email jobs
-                    _emailNotificationHelper.QueueProjectTaskCreationEmails(manager, nonManagerMembers, createProject.Title, null,null);
+                    _notificationHelper.QueueProjectTaskCreationEmails(manager, nonManagerMembers, createProject.Title, null,null);
 
                     await _unitOfWork.SaveChangesAsync();
 
                     await _unitOfWork.CommitTransactionAsync();
 
-                    await _emailDispatcherService.DispatchAsync();
+                    await _notificationDispatcherService.DispatchAsync();
+
                     return IdentityResult.Success;
                 }
                 return IdentityResult.Failed(new IdentityError
@@ -164,7 +166,7 @@ namespace Application.ProTrack.Service
                             existingProject.UpdatedDate = DateTime.UtcNow;
                             //queuing manager changed email notification
                             var membersToSendMail = initialMemberIds.Except(incomingMangerIdSet).Except(memberToRemoveIds).ToHashSet();
-                            _emailNotificationHelper.QueueManagerChangedEmail(membersToSendMail, existingProject.Title, incomingManagerId, null, null);
+                            _notificationHelper.QueueManagerChangedEmail(membersToSendMail, existingProject.Title, incomingManagerId, null, null);
                         }
                     }
                 }
@@ -205,7 +207,7 @@ namespace Application.ProTrack.Service
                         var membersToSendEmail = newMembersToAdd.Except(initialManagerIdSet).ToHashSet();
 
                         //Queue newly added memebers mail notification
-                        _emailNotificationHelper.QueueNewlyAddedMembersEmail(membersToSendEmail, incomingManagerId, existingProject.Title, null, null);
+                        _notificationHelper.QueueNewlyAddedMembersEmail(membersToSendEmail, incomingManagerId, existingProject.Title, null, null);
                     }
                 }
                 //updating project
@@ -216,7 +218,7 @@ namespace Application.ProTrack.Service
                 }
                 await _unitOfWork.CommitTransactionAsync();
                 await _unitOfWork.SaveChangesAsync();
-                await _emailDispatcherService.DispatchAsync();
+                await _notificationDispatcherService.DispatchAsync();
                 return IdentityResult.Success;
             }
             catch (Exception ex)

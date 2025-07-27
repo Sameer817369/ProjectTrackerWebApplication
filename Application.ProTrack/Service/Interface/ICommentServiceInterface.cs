@@ -8,5 +8,7 @@ namespace Application.ProTrack.Service.Interface
         public Task<IdentityResult> CreateCmtAsync(CreateCommentDto createCommentDto, Guid projUserId);
         public Task<IdentityResult> UpdateCmtAsync(CreateCommentDto updateCommentDto, Guid cmtId, Guid taskId);
         public Task<IdentityResult> DeleteCmtAsync(Guid cmtId);
+        Task<List<ReadCommentDto>> GetAllCommentsAsync();
+        Task<List<ReadCommentDto>> GetAllTaskSpecifiedCommentsAsync(Guid taskId);
     }
 }

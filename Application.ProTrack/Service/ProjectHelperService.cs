@@ -17,12 +17,12 @@ namespace Application.ProTrack.Service
         private readonly IUserServiceInterface _userService;
         private readonly IProjectRepoInterface _projectRepo;
 
-        private readonly IEmailNotificationHelperInterface _projectEmailNotificationHelper;
+        private readonly INotificationHelperInterface _projectEmailNotificationHelper;
         public ProjectHelperService(UserManager<AppUser> userManager, 
             ILogger<IProjectHelperService> logger, 
             IUserServiceInterface userService,
             IProjectRepoInterface projectRepo, 
-            IEmailNotificationHelperInterface projectEmailNotificationHelper)
+            INotificationHelperInterface projectEmailNotificationHelper)
         {
             _userManager = userManager;
             _logger = logger;
@@ -52,10 +52,10 @@ namespace Application.ProTrack.Service
                 var members = await _userManager.Users.Where(u => memberUsername.Contains(u.UserName)).ToHashSetAsync();
                 var memberUsernameSet = memberUsername.ToHashSet();
                 var foundMemebersUsernames = members.Select(u => u.UserName).ToHashSet();
-                memberUsernameSet.ExceptWith(foundMemebersUsernames);
-                if (memberUsernameSet.Any())
+                var notFoundUserman = memberUsernameSet.Except(foundMemebersUsernames).ToList();
+                if (notFoundUserman.Any())
                 {
-                    _logger.LogWarning("Some usernames were not found: {Usernames}", string.Join(", ", memberUsernameSet));
+                    _logger.LogWarning("Some usernames were not found: {Usernames}", string.Join(", ", notFoundUserman));
                 }
                 return members.Select(u => u.Id).ToHashSet();
             }

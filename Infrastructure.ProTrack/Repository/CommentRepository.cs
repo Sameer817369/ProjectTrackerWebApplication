@@ -74,9 +74,24 @@ namespace Infrastructure.ProTrack.Repository
             return await _context.Comments.Include(u=> u.CommentedProjectUserTask)
                 .ThenInclude(u => u.ProjectUser)
                 .ThenInclude(u=> u.AssignedUser)
+                .Include(t => t.CommentedProjectUserTask)
+                .ThenInclude(t =>t.Task)
                 .Where(c => !c.IsDeleted)
+                .OrderByDescending(c => c.CommentedTime)
                 .ToListAsync();
         }
+        public async Task<List<Comment>> GetAllTaskSpecifiedComments(Guid taskId)
+        {
+            return await _context.Comments.Include(u => u.CommentedProjectUserTask)
+             .ThenInclude(u => u.ProjectUser)
+             .ThenInclude(u => u.AssignedUser)
+             .Include(t => t.CommentedProjectUserTask)
+             .ThenInclude(t => t.Task)
+             .Where(c => !c.IsDeleted && c.CommentedProjectUserTask.TaskId == taskId)
+             .OrderByDescending(c => c.CommentedTime)
+             .ToListAsync();
+        }
+
 
     }
 }

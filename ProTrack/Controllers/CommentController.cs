@@ -1,9 +1,6 @@
 ﻿using Application.ProTrack.DTO.CommentDto;
 using Application.ProTrack.Service.Interface;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace ProTrack.Controllers
 {
@@ -52,6 +49,41 @@ namespace ProTrack.Controllers
                 {
                     Message = "CommentNotUpdated",
                     Error = result.Errors.Select(e => e.Description).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+        [HttpGet("all-comments")]
+        public async Task<IActionResult> GetAllCommentsAsync()
+        {
+            try
+            {
+                var result = await _commentService.GetAllCommentsAsync();
+                return Ok(new
+                {
+                    Message = "Successfully fetched",
+                    Comments = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpGet("all--task-specified-comments/{taskId}")]
+        public async Task<IActionResult> GetAllTaskSpecifiedCommentsAsync([FromRoute] Guid taskId)
+        {
+            try
+            {
+                var result = await _commentService.GetAllTaskSpecifiedCommentsAsync(taskId);
+                return Ok(new
+                {
+                    Message = "Successfully fetched",
+                    Comments = result
                 });
             }
             catch (Exception ex)

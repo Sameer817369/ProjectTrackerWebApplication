@@ -1,18 +1,18 @@
+using Application.ProTrack.Dependency_Injection;
+using Application.ProTrack.Service.Interface;
 using Domain.ProTrack.Models;
+using DotNetEnv;
 using Hangfire;
 using Infrastructure.ProTrack.Data;
 using Infrastructure.ProTrack.Data.SeedRoles;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using Serilog;
-
-
-using DotNetEnv;
-using Application.ProTrack.Dependency_Injection;
 using Infrastructure.ProTrack.Dependency_Injection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using ProTrack.Hubs;
+using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -64,6 +64,28 @@ builder.Services.AddSwaggerGen(option =>
         }
     });
 });
+
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    options.HandshakeTimeout = TimeSpan.FromSeconds(10);
+    options.MaximumReceiveMessageSize = 64 * 1024;
+});
+
+builder.Services.AddScoped<ICustomNotificationInterface, CustomNotificationSerivce>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SingalRCors", policy =>
+    {
+        policy.WithOrigins("http://localhost:5159")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+    });
+});
+
 var dbConnection = Environment.GetEnvironmentVariable("DBCONNECTIONS");
 builder.Services.AddDbContext<ApplicationDbContext>(option => option.UseSqlServer(dbConnection));
 
@@ -118,6 +140,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.MapHub<NotificationsHub>("/notificationsHub");
+
+
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
