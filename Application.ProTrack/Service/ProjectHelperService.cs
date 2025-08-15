@@ -34,7 +34,7 @@ namespace Application.ProTrack.Service
         {
             try
             {
-                var manager = await _userManager.FindByNameAsync(managerUsername);
+                var manager = await _userManager.FindByNameAsync(managerUsername);  
                 if (manager == null) return ("Error! Manager is empty");
                 return manager.Id;
             }

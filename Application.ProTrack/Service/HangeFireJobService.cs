@@ -134,7 +134,6 @@ namespace Application.ProTrack.Service
                     NotficationTitle = taskTitle == null ? "Assigned to project"
                                                              : "Assigned to task"
                 }, membersIds, null);
-
             }
             catch (Exception ex)
             {
